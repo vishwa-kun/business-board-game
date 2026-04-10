@@ -241,7 +241,14 @@ if (socket) {
 }
 
 // ── _handleResult: card is now applied server-side ─────────
-function _doEndTurn() { if (socket) socket.emit('end-turn'); else endTurn(); }
+function _doEndTurn() {
+  if (socket) {
+    if (MP.myPlayerIdx !== G.cur) return; // not your turn
+    socket.emit('end-turn');
+  } else {
+    endTurn();
+  }
+}
 
 function _handleResult(result, winner) {
   if (winner) {
@@ -571,7 +578,19 @@ function setTurnLabel() {
 }
 
 function updateRollBtn() {
-  document.getElementById('rollBtn').disabled = G.rolled;
+  const btn = document.getElementById('rollBtn');
+  const isMyTurn = !MP.online || MP.myPlayerIdx === G.cur;
+  const canRoll = isMyTurn && !G.rolled;
+  btn.disabled = !canRoll;
+  if (!isMyTurn) {
+    btn.textContent = `⏳ ${G.players[G.cur]?.name || ''}'s Turn`;
+    btn.style.opacity = '0.45';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    btn.textContent = '🎲 Roll Dice';
+    btn.style.opacity = G.rolled ? '0.45' : '1';
+    btn.style.cursor = G.rolled ? 'not-allowed' : 'pointer';
+  }
 }
 
 function msg(text) {
@@ -583,6 +602,11 @@ const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
 function rollDice() {
   if (G.rolled) return;
+  // In multiplayer, only the current player can roll
+  if (MP.online && MP.myPlayerIdx !== G.cur) {
+    msg(`⚠️ It's not your turn! Waiting for ${G.players[G.cur]?.name}...`);
+    return;
+  }
   G.rolled = true;
   updateRollBtn();
   closePropCard();
