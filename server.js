@@ -495,7 +495,11 @@ io.on('connection', (socket) => {
     }
   });
 });
-
+// Keep-alive for Render free tier
+const https = require('https');
+setInterval(() => {
+  https.get('https://business-board-game.onrender.com');
+}, 5 * 60 * 1000); // ping every 5 minutes
 // ── START SERVER ─────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🎲 Business India → http://localhost:${PORT}`));
