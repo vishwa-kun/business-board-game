@@ -18,8 +18,11 @@ const io     = new Server(server, {
 });
 
 // Serve frontend static files
-app.use(express.static(path.join(__dirname)));
-app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// Also add player-exit event
+
 
 // ── CONSTANTS ──────────────────────────────────────────────
 const COLORS      = ['#E53935','#1E88E5','#43A047','#FFB300','#8E24AA','#FB8C00','#00ACC1','#D81B60'];
@@ -306,6 +309,14 @@ io.on('connection', (socket) => {
     io.to(roomId.toUpperCase()).emit('lobby-update', room.players);
   });
 
+  // ── GET MY INDEX ──
+  socket.on('get-my-idx', () => {
+    const room = rooms[socket.roomId];
+    if (!room) return;
+    const idx = room.socketMap[socket.id];
+    if (idx !== undefined) socket.emit('my-idx', { idx });
+  });
+
   // ── PLAYER READY ──
   socket.on('player-ready', ({ ready }) => {
     const room = rooms[socket.roomId];
@@ -426,7 +437,54 @@ io.on('connection', (socket) => {
     startTimer(socket.roomId);
   });
 
+  // ── PLAYER EXIT (voluntary) ──
+  socket.on('player-exit', () => {
+    const roomId = socket.roomId;
+    const room   = rooms[roomId];
+    if (!room) return;
+    const pidx  = room.socketMap[socket.id];
+    const G     = room.state;
+    const pName = room.players[pidx]?.name || 'A player';
+
+    if (G) {
+      // Release properties back to bank
+      const gp = G.players[pidx];
+      if (gp) {
+        gp.props.forEach(sid => { G.ownership[sid] = undefined; delete G.buildings[sid]; });
+        gp.props = [];
+        gp.bust  = true;
+        gp.money = 0;
+      }
+      // If it was their turn, advance
+      if (G.cur === pidx) { advanceTurn(G); startTimer(roomId); }
+      // Check for winner
+      const winner = checkWin(G);
+      if (winner) {
+        clearTimer(roomId);
+        io.to(roomId).emit('game-over', { winner: winner.name });
+      } else {
+        io.to(roomId).emit('player-left', { name: pName, reconnectable: false });
+        io.to(roomId).emit('state-update', G);
+      }
+    } else {
+      // Pre-game lobby: fully remove
+      room.players = room.players.filter(p => p.socketId !== socket.id);
+      delete room.socketMap[socket.id];
+      if (room.players.length === 0) { delete rooms[roomId]; return; }
+      if (room.hostSocketId === socket.id && room.players.length > 0) {
+        room.players[0].isHost = true;
+        room.hostSocketId = room.players[0].socketId;
+        io.to(room.players[0].socketId).emit('host-assigned');
+      }
+      io.to(roomId).emit('lobby-update', room.players);
+    }
+    room.players[pidx] && (room.players[pidx].disconnected = true);
+    socket.leave(roomId);
+    socket.roomId = null;
+  });
+
   // ── RESTART GAME (host only) ──
+
   socket.on('restart-game', () => {
     const room = rooms[socket.roomId];
     if (!room || room.hostSocketId !== socket.id) return;

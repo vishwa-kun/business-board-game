@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Business India – Multiplayer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- RECONNECTING BANNER -->
+<div id="reconnect-banner" class="hidden">⏳ Reconnecting to game…</div>
+
+<!-- CONFIRM EXIT DIALOG -->
+<div id="exit-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>🚪 Exit Game?</h3>
+    <p>Are you sure you want to leave? Your properties will be returned to the bank.</p>
+    <div class="eb-row">
+      <button class="ebtn primary" onclick="confirmExit()">Yes, Exit</button>
+      <button class="ebtn secondary" onclick="closeExitDialog()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: ENTRANCE -->
+<div id="screen-enter" class="screen active">
+  <div class="enter-card">
+    <div class="logo-wrap">
+      <div class="logo-icon">🎲</div>
+      <h1>Business India</h1>
+      <p class="logo-sub">Multiplayer Board Game</p>
+    </div>
+    <div class="form-group">
+      <label>Your Name</label>
+      <input id="inp-name" type="text" maxlength="14" placeholder="Enter your name…" autocomplete="off"/>
+    </div>
+    <div class="enter-btns">
+      <button class="ebtn primary full" onclick="createRoom()">🏠 Create Room</button>
+      <div class="divider">or</div>
+      <div class="join-row">
+        <input id="inp-room" type="text" maxlength="8" placeholder="Room Code e.g. BI-AB12" autocomplete="off" style="text-transform:uppercase"/>
+        <button class="ebtn primary" onclick="joinRoom()">Join →</button>
+      </div>
+    </div>
+    <p id="enter-err" class="err-msg"></p>
+  </div>
+</div>
+
+<!-- SCREEN: LOBBY -->
+<div id="screen-lobby" class="screen">
+  <div class="lobby-card">
+    <h2>🎮 Game Lobby</h2>
+    <div class="room-code-box">
+      Room Code: <strong id="lobby-roomcode">—</strong>
+      <button class="copy-btn" onclick="copyRoomCode()" title="Copy">📋</button>
+    </div>
+    <p class="lobby-hint">Share this code with friends to join!</p>
+    <div id="lobby-players" class="player-list"></div>
+    <div id="lobby-actions" class="lobby-actions">
+      <button id="btn-ready" class="ebtn secondary" onclick="toggleReady()">✅ Ready</button>
+      <button id="btn-start" class="ebtn primary hidden" onclick="startGame()">🚀 Start Game</button>
+    </div>
+    <p id="lobby-err" class="err-msg"></p>
+    <button class="exit-lobby-btn" onclick="leaveLobby()">← Leave Lobby</button>
+  </div>
+</div>
+
+<!-- SCREEN: GAME -->
+<div id="screen-game" class="screen">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <span class="game-title-sm">🎲 Business India</span>
+    <div class="top-bar-right">
+      <span id="turn-indicator" class="turn-ind"></span>
+      <div id="timer-wrap" class="timer-wrap">
+        <span id="timer-bar-label"></span>
+        <div class="timer-track"><div id="timer-bar" class="timer-fill"></div></div>
+      </div>
+      <button class="exit-btn" onclick="openExitDialog()">🚪 Exit</button>
+    </div>
+  </div>
+
+  <!-- Main layout -->
+  <div class="game-layout">
+
+    <!-- BOARD -->
+    <div class="scene">
+      <div class="board-wrap" id="board-wrap">
+        <div class="board" id="board">
+
+          <!-- [1] JAIL -->
+          <div class="corner c-jail" data-sq="28"><div class="tok-area" id="sq28"></div>
+            <div class="ce">⛓️</div><div class="cl">JAIL</div><div class="cs">Fine: ₹500</div>
+          </div>
+
+          <!-- [2] TOP EDGE row-reverse -->
+          <div class="edge-top">
+            <span class="dir-lbl">◀ ◀ ◀</span>
+            <div class="prop" data-sq="20"><div class="tok-area" id="sq20"></div><div class="owner-bar"></div><div class="prop-band" style="background:#3F51B5;height:10px"></div><div class="prop-body"><span class="pi">⛩️</span><span class="pn">AMRITSAR</span><span class="pp">₹3,300</span></div></div>
+            <div class="prop" data-sq="21"><div class="tok-area" id="sq21"></div><div class="owner-bar"></div><div class="prop-band" style="background:#3F51B5;height:10px"></div><div class="prop-body"><span class="pi">⛰️</span><span class="pn">SHIMLA</span><span class="pp">₹3,500</span></div></div>
+            <div class="prop" data-sq="22"><div class="tok-area" id="sq22"></div><div class="owner-bar"></div><div class="prop-band" style="background:#3F51B5;height:10px"></div><div class="prop-body"><span class="pi">🚌</span><span class="pn">BEST</span><span class="pp">₹2,200</span></div></div>
+            <div class="special" data-sq="23" style="background:linear-gradient(135deg,#FFFDE7,#FFF176)"><div class="tok-area" id="sq23"></div><div class="owner-bar"></div><span class="si">💡</span><span class="sn">ELECTRIC<br>CO.</span><span class="sp">₹2,500</span></div>
+            <div class="prop" data-sq="24"><div class="tok-area" id="sq24"></div><div class="owner-bar"></div><div class="prop-band" style="background:#795548;height:10px"></div><div class="prop-body"><span class="pi">🌿</span><span class="pn">CHANDIGARH</span><span class="pp">₹2,500</span></div></div>
+            <div class="special" data-sq="25" style="background:linear-gradient(135deg,#E8F5E9,#81C784)"><div class="tok-area" id="sq25"></div><span class="si">📦</span><span class="sn">COMMUNITY<br>CHEST</span></div>
+            <div class="prop" data-sq="26"><div class="tok-area" id="sq26"></div><div class="owner-bar"></div><div class="prop-band" style="background:#795548;height:10px"></div><div class="prop-body"><span class="pi">🕌</span><span class="pn">LUCKNOW</span><span class="pp">₹3,000</span></div></div>
+            <div class="prop" data-sq="27"><div class="tok-area" id="sq27"></div><div class="owner-bar"></div><div class="prop-band" style="background:#795548;height:10px"></div><div class="prop-body"><span class="pi">🏯</span><span class="pn">DELHI</span><span class="pp">₹6,000</span></div></div>
+          </div>
+
+          <!-- [3] CLUB -->
+          <div class="corner c-club" data-sq="19"><div class="tok-area" id="sq19"></div>
+            <div class="ce">🎰</div><div class="cl">CLUB</div><div class="cs">Entry: ₹100</div>
+          </div>
+
+          <!-- [4] LEFT EDGE column -->
+          <div class="edge-left">
+            <span class="dir-lbl">▼</span>
+            <div class="prop" data-sq="29"><div class="tok-area" id="sq29"></div><div class="owner-bar"></div><div class="prop-band" style="background:#E91E63;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🌸</span><span class="pn">JAIPUR</span><span class="pp">₹3,000</span></div></div>
+            <div class="special" data-sq="30" style="background:linear-gradient(135deg,#FFF8E1,#FFD54F)"><div class="tok-area" id="sq30"></div><span class="si">🎴</span><span class="sn">CHANCE</span></div>
+            <div class="prop" data-sq="31"><div class="tok-area" id="sq31"></div><div class="owner-bar"></div><div class="prop-band" style="background:#E91E63;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🌮</span><span class="pn">INDORE</span><span class="pp">₹1,500</span></div></div>
+            <div class="special" data-sq="32" style="background:linear-gradient(135deg,#E3F2FD,#90CAF9)"><div class="tok-area" id="sq32"></div><span class="si">📄</span><span class="sn">INCOME<br>TAX</span><span class="sp">₹1,000</span></div>
+            <div class="prop" data-sq="33"><div class="tok-area" id="sq33"></div><div class="owner-bar"></div><div class="prop-band" style="background:#FF5722;width:11px;height:100%"></div><div class="prop-body"><span class="pi">💎</span><span class="pn">AHMEDABAD</span><span class="pp">₹4,000</span></div></div>
+            <div class="special" data-sq="34" style="background:linear-gradient(135deg,#E8EAF6,#9FA8DA)"><div class="tok-area" id="sq34"></div><div class="owner-bar"></div><span class="si">🚂</span><span class="sn">RAILWAYS</span><span class="sp">₹9,500</span></div>
+            <div class="special" data-sq="35" style="background:linear-gradient(135deg,#E0F7FA,#80DEEA)"><div class="tok-area" id="sq35"></div><div class="owner-bar"></div><span class="si">💧</span><span class="sn">WATER<br>WORKS</span><span class="sp">₹3,200</span></div>
+            <div class="prop" data-sq="36"><div class="tok-area" id="sq36"></div><div class="owner-bar"></div><div class="prop-band" style="background:#FF5722;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🏛️</span><span class="pn">MUMBAI</span><span class="pp">₹8,500</span></div></div>
+          </div>
+
+          <!-- [5] CENTER -->
+          <div class="board-inner">
+            <div class="cq">
+              <div class="card-box chance-box"><div class="cc">
+                <div class="ctit">🎴 CHANCE</div>
+                <div class="csub">Server-drawn cards</div>
+                <div class="crul"><span>🎰</span><span>Lottery +₹2,500</span></div>
+                <div class="crul"><span>🏆</span><span>Crossword +₹1,000</span></div>
+                <div class="crul"><span>🎲</span><span>Jackpot +₹2,000</span></div>
+                <div class="crul"><span>📈</span><span>Stocks +₹3,000</span></div>
+                <div class="crul"><span>🚀</span><span>Go to START +₹1,500</span></div>
+                <div class="crul"><span>💸</span><span>Market Fine -₹500</span></div>
+                <div class="crul"><span>🏠</span><span>Repairs -₹1,500</span></div>
+                <div class="crul"><span>🔥</span><span>Fire Loss -₹3,000</span></div>
+              </div></div>
+              <div class="card-box comm-box"><div class="cc">
+                <div class="ctit">📦 COMMUNITY CHEST</div>
+                <div class="csub">Server-drawn cards</div>
+                <div class="crul"><span>🎂</span><span>Birthday ₹500 ea.</span></div>
+                <div class="crul"><span>💰</span><span>Tax Refund +₹100</span></div>
+                <div class="crul"><span>🏨</span><span>Hotel +₹1,500</span></div>
+                <div class="crul"><span>💒</span><span>Marriage +₹2,000</span></div>
+                <div class="crul"><span>🏆</span><span>Bonus +₹2,500</span></div>
+                <div class="crul"><span>🔒</span><span>Go to JAIL!</span></div>
+                <div class="crul"><span>🏥</span><span>Medical -₹1,000</span></div>
+                <div class="crul"><span>💊</span><span>Insurance -₹1,500</span></div>
+              </div></div>
+              <div class="card-box chance2-box"><div class="cc">
+                <div class="ctit">🎴 CHANCE</div>
+                <div class="csub">Odd: Collect · Even: Pay</div>
+                <div class="crul"><span>🏅</span><span>Export +₹3,000</span></div>
+                <div class="crul"><span>💰</span><span>Tax Refund +₹2,000</span></div>
+                <div class="crul"><span>🎰</span><span>Lottery +₹2,500</span></div>
+                <div class="crul"><span>📈</span><span>Stocks +₹3,000</span></div>
+                <div class="crul"><span>🔥</span><span>Fire -₹3,000</span></div>
+                <div class="crul"><span>🏠</span><span>Repairs -₹1,500</span></div>
+                <div class="crul"><span>💸</span><span>Fine -₹500</span></div>
+              </div></div>
+              <div class="card-box comm2-box"><div class="cc">
+                <div class="ctit">📦 COMMUNITY CHEST</div>
+                <div class="csub">Collect · Pay · Action</div>
+                <div class="crul"><span>🎂</span><span>Birthday ₹500 ea.</span></div>
+                <div class="crul"><span>🏆</span><span>Bonus +₹2,500</span></div>
+                <div class="crul"><span>💒</span><span>Marriage +₹2,000</span></div>
+                <div class="crul"><span>🔒</span><span>Go to JAIL!</span></div>
+                <div class="crul"><span>🏥</span><span>Medical -₹1,000</span></div>
+                <div class="crul"><span>💊</span><span>Insurance -₹1,500</span></div>
+              </div></div>
+              <div class="ct-wrap"><div class="ct">Business<br>India</div></div>
+            </div>
+          </div>
+
+          <!-- [6] RIGHT EDGE column-reverse -->
+          <div class="edge-right">
+            <span class="dir-lbl">▲</span>
+            <div class="prop" data-sq="10"><div class="tok-area" id="sq10"></div><div class="owner-bar"></div><div class="prop-band" style="background:#F44336;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🕌</span><span class="pn">HYDERABAD</span><span class="pp">₹3,500</span></div></div>
+            <div class="prop" data-sq="11"><div class="tok-area" id="sq11"></div><div class="owner-bar"></div><div class="prop-band" style="background:#F44336;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🌉</span><span class="pn">KOLKATA</span><span class="pp">₹6,500</span></div></div>
+            <div class="special" data-sq="12" style="background:linear-gradient(135deg,#E8EAF6,#9FA8DA)"><div class="tok-area" id="sq12"></div><div class="owner-bar"></div><span class="si">✈️</span><span class="sn">AIR<br>INDIA</span><span class="sp">₹10,500</span></div>
+            <div class="prop" data-sq="13"><div class="tok-area" id="sq13"></div><div class="owner-bar"></div><div class="prop-band" style="background:#00BCD4;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🍵</span><span class="pn">DARJEELING</span><span class="pp">₹2,500</span></div></div>
+            <div class="prop" data-sq="14"><div class="tok-area" id="sq14"></div><div class="owner-bar"></div><div class="prop-band" style="background:#00BCD4;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🏞️</span><span class="pn">PATNA</span><span class="pp">₹2,000</span></div></div>
+            <div class="prop" data-sq="15"><div class="tok-area" id="sq15"></div><div class="owner-bar"></div><div class="prop-band" style="background:#00BCD4;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🏭</span><span class="pn">KANPUR</span><span class="pp">₹4,000</span></div></div>
+            <div class="special" data-sq="16" style="background:linear-gradient(135deg,#FFF8E1,#FFD54F)"><div class="tok-area" id="sq16"></div><span class="si">🎴</span><span class="sn">CHANCE</span></div>
+            <div class="prop" data-sq="17"><div class="tok-area" id="sq17"></div><div class="owner-bar"></div><div class="prop-band" style="background:#FF9800;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🏰</span><span class="pn">AGRA</span><span class="pp">₹2,500</span></div></div>
+            <div class="prop" data-sq="18"><div class="tok-area" id="sq18"></div><div class="owner-bar"></div><div class="prop-band" style="background:#FF9800;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🏔️</span><span class="pn">SRINAGAR</span><span class="pp">₹5,000</span></div></div>
+          </div>
+
+          <!-- [7] START -->
+          <div class="corner c-start glowing" data-sq="0"><div class="tok-area" id="sq0"></div>
+            <div class="ce">🟢</div><div class="cl">START</div><div class="cs">Land/Pass:<br>Collect ₹1,500</div>
+          </div>
+
+          <!-- [8] BOTTOM EDGE row -->
+          <div class="edge-bottom">
+            <span class="dir-lbl">▶ ▶ ▶</span>
+            <div class="prop" data-sq="1"><div class="tok-area" id="sq1"></div><div class="owner-bar"></div><div class="prop-band" style="background:#4CAF50;height:10px"></div><div class="prop-body"><span class="pi">🌴</span><span class="pn">GOA</span><span class="pp">₹4,000</span></div></div>
+            <div class="special" data-sq="2" style="background:linear-gradient(135deg,#FFF9C4,#FFEE58)"><div class="tok-area" id="sq2"></div><div class="owner-bar"></div><span class="si">🚤</span><span class="sn">MOTOR<br>BOAT</span><span class="sp">₹5,500</span></div>
+            <div class="prop" data-sq="3"><div class="tok-area" id="sq3"></div><div class="owner-bar"></div><div class="prop-band" style="background:#4CAF50;height:10px"></div><div class="prop-body"><span class="pi">⚓</span><span class="pn">COCHIN</span><span class="pp">₹3,000</span></div></div>
+            <div class="prop" data-sq="4"><div class="tok-area" id="sq4"></div><div class="owner-bar"></div><div class="prop-band" style="background:#4CAF50;height:10px"></div><div class="prop-body"><span class="pi">🏯</span><span class="pn">MYSORE</span><span class="pp">₹2,500</span></div></div>
+            <div class="special" data-sq="5" style="background:linear-gradient(135deg,#FFF3E0,#FFCC80)"><div class="tok-area" id="sq5"></div><span class="si">💰</span><span class="sn">WEALTH<br>TAX</span><span class="sp">Pay ₹750</span></div>
+            <div class="prop" data-sq="6"><div class="tok-area" id="sq6"></div><div class="owner-bar"></div><div class="prop-band" style="background:#9C27B0;height:10px"></div><div class="prop-body"><span class="pi">💻</span><span class="pn">BENGALURU</span><span class="pp">₹4,000</span></div></div>
+            <div class="special" data-sq="7" style="background:linear-gradient(135deg,#E8F5E9,#81C784)"><div class="tok-area" id="sq7"></div><span class="si">📦</span><span class="sn">COMMUNITY<br>CHEST</span></div>
+            <div class="prop" data-sq="8"><div class="tok-area" id="sq8"></div><div class="owner-bar"></div><div class="prop-band" style="background:#9C27B0;height:10px"></div><div class="prop-body"><span class="pi">🛕</span><span class="pn">CHENNAI</span><span class="pp">₹7,000</span></div></div>
+          </div>
+
+          <!-- [9] REST HOUSE -->
+          <div class="corner c-rest" data-sq="9"><div class="tok-area" id="sq9"></div>
+            <div class="ce">🏠</div><div class="cl">REST<br>HOUSE</div><div class="cs">Stay: ₹300</div>
+          </div>
+
+        </div><!-- /.board -->
+      </div><!-- /.board-wrap -->
+    </div><!-- /.scene -->
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- Player list -->
+      <div class="panel-section">
+        <div class="panel-title">👥 Players</div>
+        <div id="player-panel"></div>
+      </div>
+
+      <!-- Card log -->
+      <div class="panel-section">
+        <div class="panel-title">📋 Card Log</div>
+        <div id="card-log"></div>
+      </div>
+
+      <!-- My properties -->
+      <div class="panel-section">
+        <div class="panel-title">🏙️ My Properties</div>
+        <div id="my-props"></div>
+      </div>
+
+    </div>
+  </div><!-- /.game-layout -->
+
+  <!-- BOTTOM UI -->
+  <div class="bottom-ui">
+    <div id="status-msg" class="status-msg"></div>
+    <div class="dice-row">
+      <div class="die" id="d1">⚀</div>
+      <div class="dice-mid">
+        <button class="roll-btn" id="roll-btn" onclick="rollDice()" disabled>🎲 Roll Dice</button>
+        <button class="end-btn"  id="end-btn"  onclick="endTurn()"  disabled>⏭ End Turn</button>
+      </div>
+      <div class="die" id="d2">⚀</div>
+    </div>
+  </div>
+
+  <!-- EVENT MODAL -->
+  <div id="evt-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3 id="evt-title"></h3>
+      <p  id="evt-body"></p>
+      <div class="eb-row" id="evt-btns"></div>
+    </div>
+  </div>
+
+  <!-- WINNER MODAL -->
+  <div id="winner-modal" class="modal-overlay hidden">
+    <div class="modal-box winner-box">
+      <div class="winner-trophy">🏆</div>
+      <h2 id="winner-name">Player 1 Wins!</h2>
+      <p>Congratulations! All other players are bankrupt.</p>
+      <button class="ebtn primary full" onclick="location.reload()">🎊 Play Again</button>
+    </div>
+  </div>
+
+</div><!-- /#screen-game -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>

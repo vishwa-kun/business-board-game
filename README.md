@@ -1,99 +1,72 @@
-# 🎲 Business India — Multiplayer Board Game
+# 🎲 Business India – Multiplayer Board Game
 
-A real-time, full-stack multiplayer board game inspired by the classic Monopoly format, reimagined with an Indian theme. Built with Node.js, Express, Socket.IO, and vanilla HTML/CSS/JavaScript.
-
----
+A real-time multiplayer Indian-themed Monopoly-style board game built with **Node.js + Express + Socket.io**.
 
 ## 🚀 Features
-
-- 🧑‍🤝‍🧑 **2–8 Player Multiplayer** — Real-time via Socket.IO
-- 🏙️ **27 Indian Properties** — Cities and landmarks across India
-- 🎴 **Chance & Community Chest Cards** — With odd/even roll modifiers
-- 🏗️ **Building System** — Buy houses and hotels on properties
-- 🔄 **Trading System** — Trade properties between players
-- ⏱️ **Turn Timers** — Keep the game moving
-- 💸 **Auction Mechanics** — For unclaimed properties
-- 🏆 **Winner Statistics Dashboard**
-- 🌐 **Room Management** — Create & join game rooms
-- ✅ **Server-side Game Validation** — Prevents cheating
-
----
-
-## 🛠️ Tech Stack
-
-| Layer      | Technology              |
-|------------|------------------------|
-| Frontend   | HTML5, CSS3, Vanilla JS |
-| Backend    | Node.js, Express.js    |
-| Real-time  | Socket.IO              |
-| Runtime    | Node.js >= 18.0.0      |
-
----
-
-## 📦 Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/gamebb.git
-cd gamebb
-```
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Start the server
-
-```bash
-# Production
-npm start
-
-# Development (with auto-reload)
-npm run dev
-```
-
-### 4. Open in browser
-
-```
-http://localhost:3000
-```
-
----
-
-## 🌐 Deployment
-
-This project is ready to deploy on **[Render](https://render.com)**:
-
-1. Push this repo to GitHub
-2. Create a new **Web Service** on Render
-3. Set **Build Command**: `npm install`
-4. Set **Start Command**: `npm start`
-5. Set **Environment**: `Node`
-
----
+- 2–8 player real-time multiplayer rooms
+- Full board with 37 squares (Indian cities, railways, utilities, taxes)
+- Turn-based dice rolling, property buying, rent payment
+- Chance & Community Chest cards (server-drawn, cheat-proof)
+- Corner fees: JAIL ₹500 · REST HOUSE ₹300 · CLUB ₹100
+- Auto-reconnect with localStorage session persistence
+- Exit Game button with property transfer back to bank
+- Auto turn-advance on disconnect
+- 90-second turn timer
+- Winner detection
 
 ## 📁 Project Structure
-
 ```
 gamebb/
-├── index.html        # Main game UI (frontend)
-├── game.js           # Client-side game logic
-├── server.js         # Node.js + Socket.IO server
-├── package.json      # Project metadata & scripts
-└── .gitignore        # Git exclusions
+├── server.js          ← Node.js + Socket.io backend
+├── package.json
+├── .gitignore
+└── public/
+    ├── index.html     ← Game UI
+    ├── style.css      ← Styles
+    └── client.js      ← Socket.io client logic
 ```
 
----
+## 🛠️ Local Setup
+```bash
+npm install
+node server.js
+# Open http://localhost:3000
+```
 
-## 🤝 Contributing
+## ☁️ Deploy on Render
 
-Pull requests are welcome! For major changes, please open an issue first to discuss what you'd like to change.
+1. Push this repo to GitHub (see below)
+2. Go to https://render.com → New → Web Service
+3. Connect your GitHub repo
+4. Set these settings:
+   - **Environment**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `node server.js`
+   - **Port**: Render auto-detects `process.env.PORT`
+5. Click **Deploy**
 
----
+## 📤 Push to GitHub
 
-## 📄 License
+```bash
+# First time setup:
+git init
+git add .
+git commit -m "Initial commit: Business India multiplayer game"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git push -u origin main
 
-[MIT](https://choosealicense.com/licenses/mit/)
+# Future updates:
+git add .
+git commit -m "Your update message"
+git push
+```
+
+## 🎮 How to Play
+
+1. Open the game URL
+2. Enter your name → Create Room or Join with Room Code
+3. Share the Room Code with friends
+4. All players click Ready → Host clicks Start
+5. Roll dice on your turn → Buy properties → Pay rent → End turn
+6. Last player standing (not bankrupt) wins!
