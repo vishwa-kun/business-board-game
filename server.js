@@ -377,8 +377,16 @@ io.on('connection', (socket) => {
 
     io.to(socket.roomId).emit('dice-rolled', { v1, v2, steps, G, result, winner: winner?.name || null });
 
+    if (winner) {
+      clearTimer(socket.roomId);
+      // Delay cleanup slightly so clients get the final state before room is deleted
+      const capturedRoomId = socket.roomId;
+      setTimeout(() => { delete rooms[capturedRoomId]; console.log(`[room purged after win] ${capturedRoomId}`); }, 5000);
+      return;
+    }
+
     // Auto-advance turn after 2.5s for non-buy actions (buy waits for player decision)
-    if (!winner && result.action !== 'buy') {
+    if (result.action !== 'buy') {
       const capturedRoomId = socket.roomId;
       setTimeout(() => {
         const r = rooms[capturedRoomId];
@@ -500,6 +508,8 @@ io.on('connection', (socket) => {
       if (winner) {
         clearTimer(roomId);
         io.to(roomId).emit('game-over', { winner: winner.name });
+        // Clean up room after a delay so clients receive the event
+        setTimeout(() => { delete rooms[roomId]; console.log(`[room purged after exit win] ${roomId}`); }, 5000);
       } else {
         io.to(roomId).emit('player-left', { name: pName, reconnectable: false });
         io.to(roomId).emit('state-update', G);

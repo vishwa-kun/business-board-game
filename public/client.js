@@ -15,6 +15,14 @@ const socket = io({
 
 // ── State ──────────────────────────────────────────────────
 let mySession = null, myRoomId = null, myIdx = null, isHost = false, isReady = false;
+
+// ── Session helpers ────────────────────────────────────────
+function clearSession() {
+  localStorage.removeItem('bi_room');
+  localStorage.removeItem('bi_session');
+  myRoomId = null; mySession = null; myIdx = null;
+  isHost = false; isReady = false; G = null;
+}
 let G = null, timerIv = null, countdownIv = null;
 
 const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
@@ -109,8 +117,7 @@ function toggleReady() {
 function startGame() { socket.emit('start-game'); }
 function leaveLobby() {
   socket.emit('player-exit');
-  localStorage.removeItem('bi_room'); localStorage.removeItem('bi_session');
-  myRoomId = null; mySession = null; isHost = false; isReady = false;
+  clearSession();
   showScreen('screen-enter');
 }
 function renderLobby(players) {
@@ -305,8 +312,7 @@ function closeExitDialog() { document.getElementById('exit-overlay').classList.a
 function confirmExit() {
   closeExitDialog();
   socket.emit('player-exit');
-  localStorage.removeItem('bi_room'); localStorage.removeItem('bi_session');
-  myRoomId = null; mySession = null; myIdx = null; G = null;
+  clearSession();
   hideCountdown();
   showScreen('screen-enter');
 }
@@ -315,6 +321,7 @@ function confirmExit() {
 function tryReconnect() {
   const roomId    = localStorage.getItem('bi_room');
   const sessionId = localStorage.getItem('bi_session');
+  // Only attempt reconnect if we have valid stored session
   if (roomId && sessionId) {
     document.getElementById('reconnect-banner').classList.remove('hidden');
     socket.emit('reconnect-room', { roomId, sessionId });
@@ -335,22 +342,33 @@ function showRollResult(v1, v2) {
 
 socket.on('connect', () => {
   document.getElementById('reconnect-banner').classList.add('hidden');
+  // Only auto-reconnect if we have an active in-memory session (mid-game)
   if (!myRoomId) tryReconnect();
 });
 socket.on('disconnect', () => {
-  document.getElementById('reconnect-banner').classList.remove('hidden');
+  // Only show reconnecting banner if we're actually in a room
+  if (myRoomId) document.getElementById('reconnect-banner').classList.remove('hidden');
 });
 socket.on('reconnect', () => {
   document.getElementById('reconnect-banner').classList.add('hidden');
   if (myRoomId && mySession) socket.emit('reconnect-room', { roomId: myRoomId, sessionId: mySession });
 });
 
+// If server says room/session not found, clear stale storage and go to enter screen
 socket.on('error', ({ msg }) => {
   const active = document.querySelector('.screen.active')?.id;
   if (active === 'screen-enter') setErr('enter-err', '⚠ ' + msg);
   else if (active === 'screen-lobby') setErr('lobby-err', '⚠ ' + msg);
   else toast('⚠ ' + msg, 'bad');
+  // If reconnect failed due to expired room, clear session and go home
+  if (msg.includes('Room expired') || msg.includes('Session not found')) {
+    clearSession();
+    document.getElementById('reconnect-banner').classList.add('hidden');
+    showScreen('screen-enter');
+  }
 });
+
+// (error handler moved above, after connect/disconnect/reconnect)
 
 // Lobby
 socket.on('room-created', ({ roomId, sessionId }) => {
@@ -512,6 +530,8 @@ socket.on('game-over', ({ winner }) => {
   hideCountdown();
   document.getElementById('winner-name').textContent = `🏆 ${winner} Wins!`;
   document.getElementById('winner-modal').classList.remove('hidden');
+  // Clear session so refreshing the page goes to home screen, not reconnect
+  clearSession();
 });
 
 // ── GAME RESTARTED ───────────────────────────────────────────
@@ -522,6 +542,14 @@ socket.on('game-restarted', (state) => {
   renderAll(G);
   toast('🎲 New game started!', 'info');
 });
+
+// ── NEW GAME (from winner modal) ─────────────────────────────
+function goToNewGame() {
+  document.getElementById('winner-modal').classList.add('hidden');
+  hideCountdown();
+  clearSession();
+  showScreen('screen-enter');
+}
 
 // ── KEYBOARD ─────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
