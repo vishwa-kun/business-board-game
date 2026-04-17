@@ -1,6 +1,6 @@
 // ============================================================
 // BUSINESS INDIA — CLIENT v4.0
-// Auto-advance turns, no End Turn button
+// Chat, Avatars, Trading + Full Game Logic
 // ============================================================
 'use strict';
 
@@ -14,7 +14,21 @@ const socket = io({
 });
 
 // ── State ──────────────────────────────────────────────────
-let mySession = null, myRoomId = null, myIdx = null, isHost = false, isReady = false;
+let mySession = null, myRoomId = null, myIdx = null;
+let isHost = false, isReady = false;
+let G = null, timerIv = null, countdownIv = null;
+let selectedAvatar = 'businessman';
+let chatUnread = 0, activeTab = 'game';
+let pendingTrade = null;   // incoming trade offer
+let tradeTargetIdx = null; // player we're offering to
+
+// ── Avatar map ─────────────────────────────────────────────
+const AVATAR_EMOJI = {
+  businessman: '👔', robot: '🤖', king: '👑', queen: '👸',
+  tiger: '🐯', lion: '🦁', ninja: '🥷', astronaut: '🧑‍🚀'
+};
+
+function av(key) { return AVATAR_EMOJI[key] || '👤'; }
 
 // ── Session helpers ────────────────────────────────────────
 function clearSession() {
@@ -23,11 +37,10 @@ function clearSession() {
   myRoomId = null; mySession = null; myIdx = null;
   isHost = false; isReady = false; G = null;
 }
-let G = null, timerIv = null, countdownIv = null;
 
 const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
 
-// Full square data (mirrors server.js SQUARES) used for property cards
+// Full square data (mirrors server.js SQUARES)
 const SQUARES_FULL = [
   {id:0,  name:'START',           type:'corner'},
   {id:1,  name:'Goa',             type:'property', price:4000,  rent:[400,800,1600,2400,3200],   group:'#4CAF50', icon:'🌴'},
@@ -67,7 +80,6 @@ const SQUARES_FULL = [
   {id:35, name:'Water Works',     type:'utility',   price:3200,  rent:[150,300],                   group:'#03A9F4', icon:'💧'},
   {id:36, name:'Mumbai',          type:'property',  price:8500,  rent:[850,1700,3400,5100,6800],  group:'#FF5722', icon:'🏛️'},
 ];
-// Simple name-only array kept for legacy lookups
 const SQUARES = SQUARES_FULL.map(s => ({id: s.id, name: s.name}));
 
 // ── Screens ────────────────────────────────────────────────
@@ -76,7 +88,7 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
-// ── Toast notifications ────────────────────────────────────
+// ── Toast ──────────────────────────────────────────────────
 function toast(msg, type = 'info', duration = 3200) {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
@@ -94,7 +106,6 @@ function toast(msg, type = 'info', duration = 3200) {
 function showCountdown(seconds, label = 'Next turn in') {
   clearInterval(countdownIv);
   const overlay = document.getElementById('countdown-overlay');
-  const num     = document.getElementById('countdown-num');
   const pill    = document.getElementById('countdown-pill');
   pill.innerHTML = `${label} <span id="countdown-num">${seconds}</span>…`;
   overlay.classList.remove('hidden');
@@ -103,10 +114,7 @@ function showCountdown(seconds, label = 'Next turn in') {
     rem--;
     const n = document.getElementById('countdown-num');
     if (n) n.textContent = rem;
-    if (rem <= 0) {
-      clearInterval(countdownIv);
-      overlay.classList.add('hidden');
-    }
+    if (rem <= 0) { clearInterval(countdownIv); overlay.classList.add('hidden'); }
   }, 1000);
 }
 function hideCountdown() {
@@ -114,18 +122,43 @@ function hideCountdown() {
   document.getElementById('countdown-overlay').classList.add('hidden');
 }
 
+// ── Mobile tabs ────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tab-game').classList.toggle('hidden', tab !== 'game');
+  document.getElementById('tab-chat').classList.toggle('hidden', tab !== 'chat');
+  document.getElementById('mtab-game').classList.toggle('active', tab === 'game');
+  document.getElementById('mtab-chat').classList.toggle('active', tab === 'chat');
+  if (tab === 'chat') {
+    chatUnread = 0;
+    const badge = document.getElementById('chat-badge');
+    badge.textContent = '0';
+    badge.classList.add('hidden');
+    scrollChat();
+  }
+}
+
+// ── Avatar selection ───────────────────────────────────────
+document.getElementById('avatar-grid').querySelectorAll('.av-option').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.av-option').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedAvatar = el.dataset.av;
+  });
+});
+
 // ── Enter screen ───────────────────────────────────────────
 function createRoom() {
   const name = document.getElementById('inp-name').value.trim();
   if (!name) return setErr('enter-err', '⚠ Enter your name first.');
-  socket.emit('create-room', { name });
+  socket.emit('create-room', { name, avatar: selectedAvatar });
 }
 function joinRoom() {
   const name = document.getElementById('inp-name').value.trim();
   const code = document.getElementById('inp-room').value.trim().toUpperCase();
   if (!name) return setErr('enter-err', '⚠ Enter your name first.');
   if (!code) return setErr('enter-err', '⚠ Enter a Room Code.');
-  socket.emit('join-room', { roomId: code, name });
+  socket.emit('join-room', { roomId: code, name, avatar: selectedAvatar });
 }
 function setErr(id, msg) { document.getElementById(id).textContent = msg; }
 
@@ -158,7 +191,9 @@ function renderLobby(players) {
     if (p.isHost) badges += `<span class="badge badge-host">HOST</span>`;
     if (p.ready)  badges += `<span class="badge badge-ready">READY</span>`;
     else          badges += `<span class="badge badge-wait">WAITING</span>`;
-    row.innerHTML = `<div class="player-dot" style="background:${p.color};color:${p.color}"></div>
+    row.innerHTML = `
+      <span style="font-size:1.2rem">${av(p.avatar)}</span>
+      <div class="player-dot" style="background:${p.color}"></div>
       <span class="player-row-name">${p.name}</span>${badges}`;
     ul.appendChild(row);
   });
@@ -199,24 +234,37 @@ function renderPlayers(state) {
   const panel = document.getElementById('player-panel');
   panel.innerHTML = '';
   state.players.forEach((p, i) => {
-    const sq = SQUARES[p.pos] || { name: '?' };
+    const sq    = SQUARES[p.pos] || { name: '?' };
     const isCur = i === state.cur;
     const isMe  = i === myIdx;
     const card  = document.createElement('div');
     card.className = 'pcard' + (isCur ? ' active' : '') + (p.bust ? ' bust' : '');
+
     const dots = p.props.map(sid => {
-      const ownerColor = state.players[state.ownership[sid]]?.color || '#555';
-      return `<div class="pdot" style="background:${ownerColor}"></div>`;
+      const sq2 = SQUARES_FULL[sid];
+      return `<div class="pdot" style="background:${sq2?.group || '#555'}"></div>`;
     }).join('');
+
+    let tradeHTML = '';
+    if (!isMe && !p.bust && G && !G.players[myIdx]?.bust) {
+      tradeHTML = `<button class="trade-btn" onclick="openTradeModal(${i})">🤝 Trade with ${p.name}</button>`;
+    }
+
+    // Online indicator
+    const onlineDot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.bust ? '#555' : '#00E676'};margin-left:4px;vertical-align:middle"></span>`;
+
     card.innerHTML = `
       <div class="pcr">
-        <div class="pcdot" style="background:${p.color};color:${p.color}"></div>
-        <span class="pcname">${p.name}</span>${isMe ? '<span class="you-badge">You</span>' : ''}
+        <span class="pc-avatar">${av(p.avatar)}</span>
+        <div class="pcdot" style="background:${p.color}"></div>
+        <span class="pcname">${p.name}${onlineDot}</span>
+        ${isMe ? '<span class="you-badge">You</span>' : ''}
       </div>
       <div class="pcmoney">₹${p.money.toLocaleString()}</div>
-      <div class="pcpos">📍 ${sq.name}</div>
+      <div class="pcpos">📍 ${sq.name} &nbsp;|&nbsp; 🏙️ ${p.props.length} props</div>
       <div class="pcst ${p.bust ? 'bust-txt' : 'ok'}">${p.bust ? '💀 Bankrupt' : isCur ? '🎯 Active' : '⏳ Waiting'}</div>
-      ${dots ? `<div class="pcpropdots">${dots}</div>` : ''}`;
+      ${dots ? `<div class="pcpropdots">${dots}</div>` : ''}
+      ${tradeHTML}`;
     panel.appendChild(card);
   });
 }
@@ -230,13 +278,12 @@ function renderMyProps(state) {
     el.innerHTML = '<div class="empty-hint">None yet</div>'; return;
   }
   me.props.forEach(sid => {
-    const sq = SQUARES_FULL[sid];
-    const b  = state.buildings?.[sid];
+    const sq   = SQUARES_FULL[sid];
+    const b    = state.buildings?.[sid];
     const bldg = b ? (b.hotel ? ' 🏨' : ' 🏠'.repeat(b.houses)) : '';
     const d = document.createElement('div');
     d.className = 'mpi';
     d.title = 'Click to view property card';
-    // Color band matching the group
     const groupColor = sq?.group || '#555';
     d.innerHTML = `<div class="mpidot" style="background:${groupColor};box-shadow:0 0 5px ${groupColor}88"></div>
       <span>${sq?.name}${bldg}</span>`;
@@ -281,12 +328,12 @@ function updateTurnBanner(state) {
   const text   = document.getElementById('turn-text');
   const isMe   = state.cur === myIdx;
   dot.style.background = cur?.color || '#fff';
-  text.textContent = isMe ? '🎯 Your Turn — Roll the Dice!' : `${cur?.name}'s Turn`;
+  text.textContent = isMe
+    ? `${av(cur?.avatar)} 🎯 Your Turn — Roll the Dice!`
+    : `${av(cur?.avatar)} ${cur?.name}'s Turn`;
   banner.classList.toggle('my-turn', isMe);
-  // Update room badge
   const rb = document.getElementById('room-badge');
   if (rb && myRoomId) rb.textContent = myRoomId;
-  // Timer
   if (state.turnDeadline) startTimerBar(state.turnDeadline);
 }
 
@@ -294,11 +341,13 @@ function startTimerBar(deadline) {
   clearInterval(timerIv);
   const TOTAL = 90;
   function tick() {
-    const rem = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
-    document.getElementById('timer-sec').textContent = rem + 's';
+    const rem  = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
     const fill = document.getElementById('timer-fill');
-    fill.style.width = ((rem / TOTAL) * 100) + '%';
-    fill.style.background = rem < 20 ? '#EF5350' : rem < 40 ? '#FF9800' : '#FFD600';
+    document.getElementById('timer-sec').textContent = rem + 's';
+    if (fill) {
+      fill.style.width = ((rem / TOTAL) * 100) + '%';
+      fill.style.background = rem < 20 ? '#EF5350' : rem < 40 ? '#FF9800' : '#FFD600';
+    }
     if (rem <= 0) clearInterval(timerIv);
   }
   tick(); timerIv = setInterval(tick, 1000);
@@ -320,6 +369,15 @@ function rollDice() {
   }, 55);
 }
 
+// ── Dice result ────────────────────────────────────────────
+function showRollResult(v1, v2) {
+  const el = document.getElementById('roll-result');
+  el.textContent = `🎲 ${v1} + ${v2} = ${v1+v2}`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+// ── showEvent ──────────────────────────────────────────────
 function showEvent(icon, title, body, buttons) {
   document.getElementById('evt-icon').textContent  = icon;
   document.getElementById('evt-title').textContent = title;
@@ -338,118 +396,84 @@ function showEvent(icon, title, body, buttons) {
 function closeEvt() { document.getElementById('evt-modal').classList.add('hidden'); }
 
 // ── Property Card ──────────────────────────────────────────
-/**
- * Show the city/property card modal.
- * @param {number} sqId  - board square id
- * @param {object} opts  - { canBuy, cannotAfford, viewOnly }
- *   canBuy: show Buy + Skip buttons (it's my turn, unowned, I can afford)
- *   cannotAfford: show Skip-only + "Can't afford" hint
- *   viewOnly: just info, no action buttons
- */
 function showPropCard(sqId, opts = {}) {
   const sq = SQUARES_FULL[sqId];
-  if (!sq || !sq.price) return; // not a purchasable square
+  if (!sq || !sq.price) return;
 
-  // Header color
-  const hdr = document.getElementById('pc-header');
+  const hdr        = document.getElementById('pc-header');
   const groupColor = sq.group || '#607D8B';
   hdr.style.background = `linear-gradient(135deg, ${groupColor}dd, ${groupColor}88)`;
   hdr.style.boxShadow  = `0 4px 20px ${groupColor}66`;
 
-  // Type badge
-  const typeBadge = document.getElementById('pc-type-badge');
+  const typeBadge  = document.getElementById('pc-type-badge');
   const typeLabels = { property:'Property', transport:'Transport', utility:'Utility' };
   typeBadge.textContent = typeLabels[sq.type] || 'Property';
 
-  // Icon & name
   document.getElementById('pc-icon').textContent = sq.icon || '🏙️';
   document.getElementById('pc-name').textContent = sq.name;
 
-  // Owner
   const ownerBar = document.getElementById('pc-owner-bar');
   if (G && G.ownership[sqId] !== undefined && G.ownership[sqId] !== null) {
     const owner = G.players[G.ownership[sqId]];
     if (owner) {
-      document.getElementById('pc-owner-dot').style.background   = owner.color;
-      document.getElementById('pc-owner-dot').style.boxShadow    = `0 0 6px ${owner.color}`;
-      document.getElementById('pc-owner-name').textContent = `Owned by ${owner.name}`;
+      document.getElementById('pc-owner-dot').style.background = owner.color;
+      document.getElementById('pc-owner-dot').style.boxShadow  = `0 0 6px ${owner.color}`;
+      document.getElementById('pc-owner-name').textContent = `${av(owner.avatar)} Owned by ${owner.name}`;
       ownerBar.classList.remove('hidden');
     }
-  } else {
-    ownerBar.classList.add('hidden');
-  }
+  } else { ownerBar.classList.add('hidden'); }
 
-  // Price
   document.getElementById('pc-price').textContent    = `₹${sq.price.toLocaleString()}`;
   document.getElementById('pc-mortgage').textContent = `₹${Math.floor(sq.price / 2).toLocaleString()}`;
 
-  // Rent table
-  const rentTable = document.getElementById('pc-rent-table');
+  const rentTable    = document.getElementById('pc-rent-table');
   rentTable.innerHTML = '';
-  const b = G?.buildings?.[sqId];
-  const currentHouses = b?.hotel ? 5 : (b?.houses ?? 0);
+  const b            = G?.buildings?.[sqId];
+  const currentHouses= b?.hotel ? 5 : (b?.houses ?? 0);
 
   if (sq.type === 'property') {
-    const rentLabels = ['Base Rent','1 House','2 Houses','3 Houses','4 Houses','Hotel'];
-    // Include rent[0] as base, then houses 1-4, then hotel (last element)
-    const allRents = [...sq.rent]; // [base, h1, h2, h3, h4] or [base, h1, h2, h3, h4, hotel]
-    // For our data: rent[0]=base, [1]=1H, [2]=2H, [3]=3H, [4]=hotel (5 values)
     const tiers = [
-      { label: 'Base Rent',  val: sq.rent[0], tier: 0 },
-      { label: '1 🏠',       val: sq.rent[1], tier: 1 },
-      { label: '2 🏠🏠',     val: sq.rent[2], tier: 2 },
-      { label: '3 🏠🏠🏠',   val: sq.rent[3], tier: 3 },
-      { label: '4 🏠🏠🏠🏠', val: sq.rent[4] ?? sq.rent[3], tier: 4 },
+      { label:'Base Rent', val:sq.rent[0], tier:0 },
+      { label:'1 🏠',      val:sq.rent[1], tier:1 },
+      { label:'2 🏠🏠',    val:sq.rent[2], tier:2 },
+      { label:'3 🏠🏠🏠',  val:sq.rent[3], tier:3 },
+      { label:'4 🏠🏠🏠🏠',val:sq.rent[4] ?? sq.rent[3], tier:4 },
     ];
-    if (sq.rent.length >= 5) {
-      tiers.push({ label: 'Hotel 🏨', val: sq.rent[sq.rent.length - 1], tier: 5 });
-    }
+    if (sq.rent.length >= 5) tiers.push({ label:'Hotel 🏨', val:sq.rent[sq.rent.length-1], tier:5 });
     tiers.forEach(t => {
       if (t.val === undefined) return;
-      const isCurrent = (t.tier === currentHouses);
-      const row = document.createElement('div');
-      row.className = 'pc-rent-row' + (isCurrent ? ' highlight' : '');
+      const isCur = (t.tier === currentHouses);
+      const row   = document.createElement('div');
+      row.className = 'pc-rent-row' + (isCur ? ' highlight' : '');
       row.innerHTML = `<span class="pc-rent-label">${t.label}</span>
-        <span class="pc-rent-val${isCurrent ? ' current' : ''}">₹${t.val.toLocaleString()}</span>`;
+        <span class="pc-rent-val${isCur ? ' current' : ''}">₹${t.val.toLocaleString()}</span>`;
       rentTable.appendChild(row);
     });
   } else if (sq.type === 'transport') {
-    const tLabels = ['1 Transport','2 Transports','3 Transports','4 Transports'];
+    const tl = ['1 Transport','2 Transports','3 Transports','4 Transports'];
     sq.rent.forEach((r, i) => {
       const row = document.createElement('div');
       row.className = 'pc-rent-row';
-      row.innerHTML = `<span class="pc-rent-label">${tLabels[i] || (i+1)+' owned'}</span>
-        <span class="pc-rent-val">₹${r.toLocaleString()}</span>`;
+      row.innerHTML = `<span class="pc-rent-label">${tl[i]}</span><span class="pc-rent-val">₹${r.toLocaleString()}</span>`;
       rentTable.appendChild(row);
     });
   } else if (sq.type === 'utility') {
-    const uLabels = ['1 Utility owned','2 Utilities owned'];
+    const ul = ['1 Utility owned','2 Utilities owned'];
     sq.rent.forEach((r, i) => {
       const row = document.createElement('div');
       row.className = 'pc-rent-row';
-      row.innerHTML = `<span class="pc-rent-label">${uLabels[i]}</span>
-        <span class="pc-rent-val">₹${r.toLocaleString()}</span>`;
+      row.innerHTML = `<span class="pc-rent-label">${ul[i]}</span><span class="pc-rent-val">₹${r.toLocaleString()}</span>`;
       rentTable.appendChild(row);
     });
   }
 
-  // Buildings display
-  const bldDiv = document.getElementById('pc-buildings');
-  const bldIcons = document.getElementById('pc-bld-icons');
+  const bldDiv  = document.getElementById('pc-buildings');
+  const bldIcons= document.getElementById('pc-bld-icons');
   if (b && sq.type === 'property') {
     bldDiv.classList.remove('hidden');
-    if (b.hotel) {
-      bldIcons.textContent = '🏨';
-    } else if (b.houses > 0) {
-      bldIcons.textContent = '🏠'.repeat(b.houses);
-    } else {
-      bldIcons.textContent = '—';
-    }
-  } else {
-    bldDiv.classList.add('hidden');
-  }
+    bldIcons.textContent = b.hotel ? '🏨' : b.houses > 0 ? '🏠'.repeat(b.houses) : '—';
+  } else { bldDiv.classList.add('hidden'); }
 
-  // Action buttons
   const actions = document.getElementById('pc-actions');
   actions.innerHTML = '';
   if (opts.canBuy) {
@@ -458,20 +482,8 @@ function showPropCard(sqId, opts = {}) {
     buyBtn.innerHTML = `🛒 Buy ₹${sq.price.toLocaleString()}`;
     buyBtn.onclick = () => { closePropCard(); socket.emit('buy-property', { sqId }); };
     actions.appendChild(buyBtn);
-
     const skipBtn = document.createElement('button');
     skipBtn.className = 'ebtn secondary';
-    skipBtn.textContent = '⏭ Skip';
-    skipBtn.onclick = () => { closePropCard(); socket.emit('skip-buy'); };
-    actions.appendChild(skipBtn);
-  } else if (opts.cannotAfford) {
-    // Show skip only with a note
-    const note = document.createElement('div');
-    note.style.cssText = 'font-size:.68rem;color:#ff6b6b;text-align:center;margin-bottom:4px';
-    note.textContent = '💸 Not enough funds to buy';
-    actions.appendChild(note);
-    const skipBtn = document.createElement('button');
-    skipBtn.className = 'ebtn secondary full';
     skipBtn.textContent = '⏭ Skip';
     skipBtn.onclick = () => { closePropCard(); socket.emit('skip-buy'); };
     actions.appendChild(skipBtn);
@@ -491,6 +503,227 @@ function closePropCard(e) {
   document.getElementById('prop-card-modal').classList.add('hidden');
 }
 
+// ── Chat ───────────────────────────────────────────────────
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  socket.emit('sendMessage', { text });
+  input.value = '';
+}
+
+function renderChatMsg(msg) {
+  const container = document.getElementById('chat-messages');
+  const el = document.createElement('div');
+
+  if (msg.type === 'system') {
+    el.className = 'chat-msg-system';
+    el.textContent = msg.text;
+  } else {
+    const isMe = (G && G.players[myIdx]?.name === msg.sender) ||
+                 (msg.sender && myIdx !== null && G?.players[myIdx]?.name === msg.sender);
+    el.className = 'chat-msg-player' + (isMe ? ' me' : '');
+    const timeStr = new Date(msg.time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    el.innerHTML = `
+      <div class="chat-av">${av(msg.avatar)}</div>
+      <div>
+        <div class="chat-bubble">
+          ${!isMe ? `<div class="chat-sender" style="color:${msg.color || '#aaa'}">${msg.sender}</div>` : ''}
+          <div class="chat-text">${msg.text}</div>
+          <div class="chat-time">${timeStr}</div>
+        </div>
+      </div>`;
+  }
+  container.appendChild(el);
+  scrollChat();
+
+  // Badge if not on chat tab
+  if (activeTab !== 'chat' && msg.type !== 'system') {
+    chatUnread++;
+    const badge = document.getElementById('chat-badge');
+    badge.textContent = chatUnread > 9 ? '9+' : chatUnread;
+    badge.classList.remove('hidden');
+  }
+}
+
+function scrollChat() {
+  const c = document.getElementById('chat-messages');
+  if (c) c.scrollTop = c.scrollHeight;
+}
+
+function loadChatHistory(msgs) {
+  const container = document.getElementById('chat-messages');
+  container.innerHTML = '';
+  if (!msgs?.length) return;
+  msgs.forEach(m => {
+    // Render without badge increment for history
+    const el = document.createElement('div');
+    if (m.type === 'system') {
+      el.className = 'chat-msg-system';
+      el.textContent = m.text;
+    } else {
+      const isMe = G?.players[myIdx]?.name === m.sender;
+      el.className = 'chat-msg-player' + (isMe ? ' me' : '');
+      const timeStr = new Date(m.time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+      el.innerHTML = `
+        <div class="chat-av">${av(m.avatar)}</div>
+        <div>
+          <div class="chat-bubble">
+            ${!isMe ? `<div class="chat-sender" style="color:${m.color || '#aaa'}">${m.sender}</div>` : ''}
+            <div class="chat-text">${m.text}</div>
+            <div class="chat-time">${timeStr}</div>
+          </div>
+        </div>`;
+    }
+    container.appendChild(el);
+  });
+  scrollChat();
+}
+
+// ── Trade Modal (initiator) ────────────────────────────────
+function openTradeModal(targetIdx) {
+  if (!G) return;
+  const me     = G.players[myIdx];
+  const target = G.players[targetIdx];
+  if (!me || !target || me.bust || target.bust) return;
+
+  tradeTargetIdx = targetIdx;
+
+  // Target info
+  const info = document.getElementById('trade-target-info');
+  info.innerHTML = `<span style="font-size:1.3rem">${av(target.avatar)}</span>
+    <span style="color:${target.color};font-weight:700">${target.name}</span>
+    <span style="color:#9aa5b4;font-size:.8rem;margin-left:auto">₹${target.money.toLocaleString()} available</span>`;
+
+  // My properties
+  const myList = document.getElementById('trade-my-props');
+  myList.innerHTML = '';
+  if (!me.props.length) {
+    myList.innerHTML = '<div style="color:#9aa5b4;font-size:.76rem;padding:6px">You own no properties</div>';
+  } else {
+    me.props.forEach(sid => {
+      const sq = SQUARES_FULL[sid];
+      const d  = document.createElement('div');
+      d.className = 'trade-prop-item';
+      d.dataset.sid = sid;
+      d.innerHTML = `<div class="trade-prop-dot" style="background:${sq?.group||'#555'}"></div><span>${sq?.name}</span>`;
+      d.addEventListener('click', () => d.classList.toggle('selected'));
+      myList.appendChild(d);
+    });
+  }
+
+  // Target properties
+  const theirList = document.getElementById('trade-their-props');
+  theirList.innerHTML = '';
+  if (!target.props.length) {
+    theirList.innerHTML = '<div style="color:#9aa5b4;font-size:.76rem;padding:6px">They own no properties</div>';
+  } else {
+    target.props.forEach(sid => {
+      const sq = SQUARES_FULL[sid];
+      const d  = document.createElement('div');
+      d.className = 'trade-prop-item';
+      d.dataset.sid = sid;
+      d.innerHTML = `<div class="trade-prop-dot" style="background:${sq?.group||'#555'}"></div><span>${sq?.name}</span>`;
+      d.addEventListener('click', () => d.classList.toggle('selected'));
+      theirList.appendChild(d);
+    });
+  }
+
+  document.getElementById('trade-offer-money').value   = '';
+  document.getElementById('trade-request-money').value = '';
+  document.getElementById('trade-err').textContent     = '';
+  document.getElementById('trade-modal').classList.remove('hidden');
+}
+
+function closeTradeModal(e) {
+  if (e && e.target !== document.getElementById('trade-modal')) return;
+  document.getElementById('trade-modal').classList.add('hidden');
+  tradeTargetIdx = null;
+}
+
+function submitTrade() {
+  if (tradeTargetIdx === null) return;
+  const offerProps = [...document.querySelectorAll('#trade-my-props .trade-prop-item.selected')]
+    .map(el => parseInt(el.dataset.sid));
+  const requestProps = [...document.querySelectorAll('#trade-their-props .trade-prop-item.selected')]
+    .map(el => parseInt(el.dataset.sid));
+  const offerMoney   = parseInt(document.getElementById('trade-offer-money').value)   || 0;
+  const requestMoney = parseInt(document.getElementById('trade-request-money').value) || 0;
+
+  if (!offerProps.length && !requestProps.length && offerMoney === 0 && requestMoney === 0) {
+    document.getElementById('trade-err').textContent = '⚠ Add something to the trade offer.'; return;
+  }
+  const me = G?.players[myIdx];
+  if (offerMoney > (me?.money || 0)) {
+    document.getElementById('trade-err').textContent = '⚠ Not enough funds.'; return;
+  }
+
+  socket.emit('createTrade', {
+    targetIdx:    tradeTargetIdx,
+    offerProps,
+    offerMoney,
+    requestProps,
+    requestMoney
+  });
+  closeTradeModal();
+}
+
+// ── Trade Incoming Modal ───────────────────────────────────
+function showIncomingTrade(data) {
+  pendingTrade = data;
+  const { trade, fromName, fromAvatar, fromColor, offerPropNames, requestPropNames } = data;
+
+  document.getElementById('trade-from-info').innerHTML = `
+    <span style="font-size:1.3rem">${av(fromAvatar)}</span>
+    <span style="color:${fromColor};font-weight:700">${fromName}</span>
+    <span style="color:#9aa5b4;font-size:.8rem;margin-left:auto">wants to trade with you!</span>`;
+
+  // Offer props
+  const offerList = document.getElementById('incoming-offer-props');
+  offerList.innerHTML = '';
+  if (offerPropNames.length) {
+    offerPropNames.forEach((n, i) => {
+      const sq = SQUARES_FULL[trade.offerProps[i]];
+      const d  = document.createElement('div');
+      d.className = 'trade-incoming-item';
+      d.innerHTML = `<div class="trade-prop-dot" style="background:${sq?.group||'#555'}"></div><span>${n}</span>`;
+      offerList.appendChild(d);
+    });
+  } else { offerList.innerHTML = '<div style="color:#9aa5b4;font-size:.76rem;padding:4px">No properties</div>'; }
+
+  // Offer money
+  document.getElementById('incoming-offer-money').textContent =
+    trade.offerMoney > 0 ? `💵 ₹${trade.offerMoney.toLocaleString()} cash` : '';
+
+  // Request props
+  const reqList = document.getElementById('incoming-request-props');
+  reqList.innerHTML = '';
+  if (requestPropNames.length) {
+    requestPropNames.forEach((n, i) => {
+      const sq = SQUARES_FULL[trade.requestProps[i]];
+      const d  = document.createElement('div');
+      d.className = 'trade-incoming-item';
+      d.innerHTML = `<div class="trade-prop-dot" style="background:${sq?.group||'#555'}"></div><span>${n}</span>`;
+      reqList.appendChild(d);
+    });
+  } else { reqList.innerHTML = '<div style="color:#9aa5b4;font-size:.76rem;padding:4px">No properties</div>'; }
+
+  document.getElementById('incoming-request-money').textContent =
+    trade.requestMoney > 0 ? `💵 ₹${trade.requestMoney.toLocaleString()} cash` : '';
+
+  document.getElementById('trade-incoming-modal').classList.remove('hidden');
+}
+
+function respondTrade(decision) {
+  if (!pendingTrade) return;
+  if (decision === 'accept') {
+    socket.emit('acceptTrade', { pairKey: pendingTrade.trade.pairKey });
+  } else {
+    socket.emit('rejectTrade', { pairKey: pendingTrade.trade.pairKey });
+  }
+  document.getElementById('trade-incoming-modal').classList.add('hidden');
+  pendingTrade = null;
+}
 
 // ── Exit dialog ────────────────────────────────────────────
 function openExitDialog()  { document.getElementById('exit-overlay').classList.remove('hidden'); }
@@ -507,19 +740,10 @@ function confirmExit() {
 function tryReconnect() {
   const roomId    = localStorage.getItem('bi_room');
   const sessionId = localStorage.getItem('bi_session');
-  // Only attempt reconnect if we have valid stored session
   if (roomId && sessionId) {
     document.getElementById('reconnect-banner').classList.remove('hidden');
     socket.emit('reconnect-room', { roomId, sessionId });
   }
-}
-
-// ── Dice result display ────────────────────────────────────
-function showRollResult(v1, v2) {
-  const el = document.getElementById('roll-result');
-  el.textContent = `🎲 ${v1} + ${v2} = ${v1+v2}`;
-  el.classList.remove('hidden');
-  setTimeout(() => el.classList.add('hidden'), 4000);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -528,11 +752,9 @@ function showRollResult(v1, v2) {
 
 socket.on('connect', () => {
   document.getElementById('reconnect-banner').classList.add('hidden');
-  // Only auto-reconnect if we have an active in-memory session (mid-game)
   if (!myRoomId) tryReconnect();
 });
 socket.on('disconnect', () => {
-  // Only show reconnecting banner if we're actually in a room
   if (myRoomId) document.getElementById('reconnect-banner').classList.remove('hidden');
 });
 socket.on('reconnect', () => {
@@ -540,21 +762,17 @@ socket.on('reconnect', () => {
   if (myRoomId && mySession) socket.emit('reconnect-room', { roomId: myRoomId, sessionId: mySession });
 });
 
-// If server says room/session not found, clear stale storage and go to enter screen
 socket.on('error', ({ msg }) => {
   const active = document.querySelector('.screen.active')?.id;
-  if (active === 'screen-enter') setErr('enter-err', '⚠ ' + msg);
+  if (active === 'screen-enter')   setErr('enter-err', '⚠ ' + msg);
   else if (active === 'screen-lobby') setErr('lobby-err', '⚠ ' + msg);
   else toast('⚠ ' + msg, 'bad');
-  // If reconnect failed due to expired room, clear session and go home
   if (msg.includes('Room expired') || msg.includes('Session not found')) {
     clearSession();
     document.getElementById('reconnect-banner').classList.add('hidden');
     showScreen('screen-enter');
   }
 });
-
-// (error handler moved above, after connect/disconnect/reconnect)
 
 // Lobby
 socket.on('room-created', ({ roomId, sessionId }) => {
@@ -584,7 +802,7 @@ socket.on('host-assigned', () => {
 });
 
 // Reconnected mid-game
-socket.on('reconnected', ({ roomId, playerIdx, state, lobbyPlayers, isHost: iH, sessionId }) => {
+socket.on('reconnected', ({ roomId, playerIdx, state, lobbyPlayers, isHost: iH, sessionId, chatHistory }) => {
   document.getElementById('reconnect-banner').classList.add('hidden');
   myRoomId = roomId; myIdx = playerIdx; isHost = iH; mySession = sessionId;
   localStorage.setItem('bi_room', roomId); localStorage.setItem('bi_session', sessionId);
@@ -593,6 +811,7 @@ socket.on('reconnected', ({ roomId, playerIdx, state, lobbyPlayers, isHost: iH, 
     document.getElementById('room-badge').textContent = roomId;
     showScreen('screen-game');
     renderAll(G);
+    if (chatHistory?.length) loadChatHistory(chatHistory);
     toast('✅ Reconnected!', 'good');
   } else {
     document.getElementById('lobby-roomcode').textContent = roomId;
@@ -604,14 +823,16 @@ socket.on('reconnected', ({ roomId, playerIdx, state, lobbyPlayers, isHost: iH, 
 // Game started
 socket.on('game-started', (state) => {
   G = state;
-  if (myIdx === null) myIdx = 0; // fallback
+  if (myIdx === null) myIdx = 0;
   showScreen('screen-game');
   document.getElementById('room-badge').textContent = myRoomId;
   renderAll(G);
-  toast('🎲 Game started! Player 1 goes first.', 'info');
+  // Clear chat for new game
+  document.getElementById('chat-messages').innerHTML = '';
+  toast('🎲 Game started! Good luck!', 'info');
 });
 
-// ── DICE ROLLED ─────────────────────────────────────────────
+// ── DICE ROLLED ──────────────────────────────────────────────
 socket.on('dice-rolled', ({ v1, v2, steps, G: newG, result, winner }) => {
   G = newG;
   const d1 = document.getElementById('d1');
@@ -620,67 +841,69 @@ socket.on('dice-rolled', ({ v1, v2, steps, G: newG, result, winner }) => {
   d1.classList.remove('spinning'); d2.classList.remove('spinning');
   showRollResult(v1, v2);
 
-  const p = G.players[G.cur]; // current player (before auto-advance)
+  const p     = G.players[G.cur];
+  const sqName= SQUARES[p.pos]?.name || '?';
+  const isMe  = G.cur === myIdx;
   renderAll(G);
 
   if (winner) {
     hideCountdown();
-    document.getElementById('winner-name').textContent = `🏆 ${winner} Wins!`;
+    const winPlayer = G.players.find(pl => pl.name === winner);
+    document.getElementById('winner-avatar').textContent = av(winPlayer?.avatar);
+    document.getElementById('winner-name').textContent   = `🏆 ${winner} Wins!`;
     document.getElementById('winner-modal').classList.remove('hidden');
     return;
   }
 
-  const sqName = SQUARES[p.pos]?.name || '?';
-  const isMe   = G.cur === myIdx;
-
   switch (result.action) {
     case 'buy':
       if (isMe) {
-        // Show full property card with buy/skip buttons
         showPropCard(result.sqId, { canBuy: true });
       } else {
-        toast(`${p.name} is deciding on ${sqName}…`, 'info');
+        toast(`${av(p.avatar)} ${p.name} is deciding on ${sqName}…`, 'info');
       }
-      return; // No countdown for buy – waits for player decision
+      return;
     case 'cannot_buy':
-      // Don't show the property card — just notify and let the server auto-advance
-      toast(isMe ? `💸 Not enough funds to buy ${sqName}.` : `${p.name} can't afford ${sqName}.`, 'bad', 2500);
+      toast(isMe ? `💸 Not enough funds to buy ${sqName}.` : `${av(p.avatar)} ${p.name} can't afford ${sqName}.`, 'bad', 2500);
       break;
     case 'rent':
-      toast(`${p.name} paid ₹${result.paid.toLocaleString()} rent to ${result.ownerName}.`, isMe ? 'bad' : 'info'); break;
+      toast(`${av(p.avatar)} ${p.name} paid ₹${result.paid.toLocaleString()} rent to ${result.ownerName}.`, isMe ? 'bad' : 'info'); break;
     case 'tax':
-      toast(`${p.name} paid ₹${result.amount.toLocaleString()} tax (${result.name}).`, isMe ? 'bad' : 'info'); break;
+      toast(`${av(p.avatar)} ${p.name} paid ₹${result.amount.toLocaleString()} tax (${result.name}).`, isMe ? 'bad' : 'info'); break;
     case 'start_collect':
-      toast(`${p.name} landed on START! +₹1,500 🟢`, isMe ? 'good' : 'info'); break;
+      toast(`${av(p.avatar)} ${p.name} landed on START! +₹1,500 🟢`, isMe ? 'good' : 'info'); break;
     case 'rest':
-      toast(`${p.name} at REST HOUSE – paid ₹${result.amount}. 🏠`, isMe ? 'bad' : 'info'); break;
+      toast(`${av(p.avatar)} ${p.name} at REST HOUSE – paid ₹${result.amount}. 🏠`, isMe ? 'bad' : 'info'); break;
     case 'club':
-      toast(`${p.name} entered CLUB – paid ₹${result.amount}. 🎰`, isMe ? 'bad' : 'info'); break;
+      toast(`${av(p.avatar)} ${p.name} entered CLUB – paid ₹${result.amount}. 🎰`, isMe ? 'bad' : 'info'); break;
     case 'jail':
-      toast(`⛓️ ${p.name} is in JAIL! Fine ₹500.`, 'bad'); break;
+      toast(`⛓️ ${av(p.avatar)} ${p.name} is in JAIL! Fine ₹500.`, 'bad'); break;
     case 'card':
-      toast(`${p.name} drew ${result.deck.toUpperCase()}: ${result.result}`, 'info', 3500); break;
+      toast(`${av(p.avatar)} ${p.name} drew ${result.deck.toUpperCase()}: ${result.result}`, 'info', 3500); break;
     case 'build':
-      toast(`${p.name} is on their own property.`, 'info', 2000); break;
+      toast(`${av(p.avatar)} ${p.name} is on their own property.`, 'info', 2000); break;
     default:
-      toast(`${p.name} moved to ${sqName}.`, 'info', 2000);
+      toast(`${av(p.avatar)} ${p.name} moved to ${sqName}.`, 'info', 2000);
   }
-
-  // Show countdown (server will auto-advance in 2.5s)
   showCountdown(2, 'Next turn in');
 });
 
-// ── TURN CHANGED (auto-advance from server) ─────────────────
+// ── TURN CHANGED ─────────────────────────────────────────────
 socket.on('turn-changed', (state) => {
   G = state;
   hideCountdown();
   renderAll(G);
   const cur  = G.players[G.cur];
   const isMe = G.cur === myIdx;
-  toast(isMe ? `🎯 Your turn, ${cur.name}! Roll the dice!` : `${cur.name}'s turn.`, isMe ? 'good' : 'info', 2500);
+  toast(
+    isMe
+      ? `🎯 Your turn, ${cur.name}! Roll the dice!`
+      : `${av(cur.avatar)} ${cur.name}'s turn.`,
+    isMe ? 'good' : 'info', 2500
+  );
 });
 
-// ── STATE UPDATE (generic sync) ──────────────────────────────
+// ── STATE UPDATE ─────────────────────────────────────────────
 socket.on('state-update', (state) => {
   G = state;
   renderAll(G);
@@ -692,12 +915,36 @@ socket.on('property-bought', ({ playerName, sqId, G: newG }) => {
   hideCountdown();
   renderAll(G);
   toast(`🏙️ ${playerName} bought ${SQUARES[sqId]?.name}!`, 'good');
-  // Show whose turn it is next
   const cur = G.players[G.cur];
   const isMe = G.cur === myIdx;
   setTimeout(() => {
-    toast(isMe ? `🎯 Your turn! Roll the dice.` : `${cur.name}'s turn.`, isMe ? 'good' : 'info', 2200);
+    toast(isMe ? `🎯 Your turn! Roll the dice.` : `${av(cur.avatar)} ${cur.name}'s turn.`, isMe ? 'good' : 'info', 2200);
   }, 500);
+});
+
+// ── CHAT EVENTS ──────────────────────────────────────────────
+socket.on('receiveMessage', (msg) => {
+  renderChatMsg(msg);
+});
+
+// ── TRADE EVENTS ─────────────────────────────────────────────
+socket.on('receiveTrade', (data) => {
+  showIncomingTrade(data);
+  toast(`📬 Trade offer from ${data.fromName}!`, 'info', 5000);
+});
+
+socket.on('tradeSent', ({ msg }) => {
+  toast(msg, 'info');
+});
+
+socket.on('tradeCompleted', ({ from, to, G: newG }) => {
+  G = newG;
+  renderAll(G);
+  toast(`🤝 Trade completed: ${from} ↔ ${to}!`, 'good', 4000);
+});
+
+socket.on('tradeRejected', ({ by }) => {
+  toast(`❌ ${by} rejected your trade offer.`, 'bad', 4000);
 });
 
 // ── PLAYER LEFT / RECONNECTED ────────────────────────────────
@@ -707,14 +954,16 @@ socket.on('player-left', ({ name, reconnectable }) => {
 });
 socket.on('player-reconnected', ({ name }) => {
   toast(`${name} reconnected!`, 'good');
+  if (G) renderPlayers(G);
 });
 
 // ── GAME OVER ────────────────────────────────────────────────
 socket.on('game-over', ({ winner }) => {
   hideCountdown();
-  document.getElementById('winner-name').textContent = `🏆 ${winner} Wins!`;
+  const winPlayer = G?.players.find(p => p.name === winner);
+  document.getElementById('winner-avatar').textContent = av(winPlayer?.avatar);
+  document.getElementById('winner-name').textContent   = `🏆 ${winner} Wins!`;
   document.getElementById('winner-modal').classList.remove('hidden');
-  // Clear session so refreshing the page goes to home screen, not reconnect
   clearSession();
 });
 
@@ -723,6 +972,7 @@ socket.on('game-restarted', (state) => {
   G = state;
   hideCountdown();
   document.getElementById('winner-modal').classList.add('hidden');
+  document.getElementById('chat-messages').innerHTML = '';
   renderAll(G);
   toast('🎲 New game started!', 'info');
 });
@@ -740,6 +990,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closePropCard();
     closeEvt();
+    closeTradeModal();
+    document.getElementById('trade-incoming-modal').classList.add('hidden');
   }
   if (e.key === 'Enter') {
     const activeId = document.querySelector('.screen.active')?.id;
@@ -747,18 +999,20 @@ document.addEventListener('keydown', e => {
       const code = document.getElementById('inp-room').value.trim();
       if (code) joinRoom(); else createRoom();
     }
+    if (activeId === 'screen-game' && document.activeElement?.id === 'chat-input') {
+      sendChat();
+    }
   }
 });
 
-// ── BOARD TILE CLICKS (view property card) ───────────────────
-// Attach after DOM is ready; re-attach is safe since we use data-sq
+// ── BOARD TILE CLICKS ─────────────────────────────────────────
 document.querySelectorAll('.prop, .special').forEach(tile => {
   tile.addEventListener('click', () => {
-    if (!G) return; // game not started
+    if (!G) return;
     const sqId = parseInt(tile.dataset.sq, 10);
     if (isNaN(sqId)) return;
     const sq = SQUARES_FULL[sqId];
-    if (!sq || !sq.price) return; // not a purchasable square
+    if (!sq || !sq.price) return;
     showPropCard(sqId, { viewOnly: true });
   });
 });

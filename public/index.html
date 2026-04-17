@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Business India – Multiplayer</title>
+<meta name="description" content="Real-time multiplayer Business India board game with chat, trading and avatars."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="style.css"/>
@@ -41,6 +42,22 @@
       <h1 class="logo-title">Business India</h1>
       <p class="logo-sub">Real-time Multiplayer Board Game</p>
     </div>
+
+    <!-- AVATAR SELECTION -->
+    <div class="form-group">
+      <label class="form-label">Choose Your Avatar</label>
+      <div class="avatar-grid" id="avatar-grid">
+        <div class="av-option selected" data-av="businessman" title="Businessman">👔</div>
+        <div class="av-option" data-av="robot"       title="Robot">🤖</div>
+        <div class="av-option" data-av="king"        title="King">👑</div>
+        <div class="av-option" data-av="queen"       title="Queen">👸</div>
+        <div class="av-option" data-av="tiger"       title="Tiger">🐯</div>
+        <div class="av-option" data-av="lion"        title="Lion">🦁</div>
+        <div class="av-option" data-av="ninja"       title="Ninja">🥷</div>
+        <div class="av-option" data-av="astronaut"   title="Astronaut">🧑‍🚀</div>
+      </div>
+    </div>
+
     <div class="enter-form">
       <div class="form-group">
         <label class="form-label">Your Name</label>
@@ -126,7 +143,7 @@
               <div class="ce">⛓️</div><div class="cl">JAIL</div><div class="cs">Fine ₹500</div>
             </div>
 
-            <!-- [2] TOP EDGE (row-reverse) -->
+            <!-- [2] TOP EDGE -->
             <div class="edge-top">
               <span class="dir-lbl">◀</span>
               <div class="prop" data-sq="20"><div class="tok-area" id="sq20"></div><div class="owner-bar"></div><div class="prop-band" style="background:#3F51B5;height:10px"></div><div class="prop-body"><span class="pi">⛩️</span><span class="pn">AMRITSAR</span><span class="pp">₹3,300</span></div></div>
@@ -144,7 +161,7 @@
               <div class="ce">🎰</div><div class="cl">CLUB</div><div class="cs">Entry ₹100</div>
             </div>
 
-            <!-- [4] LEFT EDGE (column) -->
+            <!-- [4] LEFT EDGE -->
             <div class="edge-left">
               <span class="dir-lbl">▼</span>
               <div class="prop" data-sq="29"><div class="tok-area" id="sq29"></div><div class="owner-bar"></div><div class="prop-band" style="background:#E91E63;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🌸</span><span class="pn">JAIPUR</span><span class="pp">₹3,000</span></div></div>
@@ -202,7 +219,7 @@
               </div>
             </div>
 
-            <!-- [6] RIGHT EDGE (column-reverse) -->
+            <!-- [6] RIGHT EDGE -->
             <div class="edge-right">
               <span class="dir-lbl">▲</span>
               <div class="prop" data-sq="10"><div class="tok-area" id="sq10"></div><div class="owner-bar"></div><div class="prop-band" style="background:#F44336;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🕌</span><span class="pn">HYDERABAD</span><span class="pp">₹3,500</span></div></div>
@@ -221,7 +238,7 @@
               <div class="ce">🟢</div><div class="cl">START</div><div class="cs">Land/Pass<br>+₹1,500</div>
             </div>
 
-            <!-- [8] BOTTOM EDGE (row) -->
+            <!-- [8] BOTTOM EDGE -->
             <div class="edge-bottom">
               <span class="dir-lbl">▶</span>
               <div class="prop" data-sq="1"><div class="tok-area" id="sq1"></div><div class="owner-bar"></div><div class="prop-band" style="background:#4CAF50;height:10px"></div><div class="prop-body"><span class="pi">🌴</span><span class="pn">GOA</span><span class="pp">₹4,000</span></div></div>
@@ -247,36 +264,59 @@
     <!-- RIGHT PANEL -->
     <aside class="right-panel">
 
-      <!-- DICE SECTION -->
-      <div class="dice-section">
-        <div class="dice-display">
-          <div class="die-3d" id="d1">⚀</div>
-          <div class="die-3d" id="d2">⚀</div>
+      <!-- MOBILE TAB BAR -->
+      <div class="mobile-tabs">
+        <button class="mtab active" id="mtab-game" onclick="switchTab('game')">🎮 Game</button>
+        <button class="mtab" id="mtab-chat" onclick="switchTab('chat')">💬 Chat <span id="chat-badge" class="chat-badge hidden">0</span></button>
+      </div>
+
+      <!-- GAME TAB CONTENT -->
+      <div id="tab-game" class="tab-content">
+
+        <!-- DICE SECTION -->
+        <div class="dice-section">
+          <div class="dice-display">
+            <div class="die-3d" id="d1">⚀</div>
+            <div class="die-3d" id="d2">⚀</div>
+          </div>
+          <button class="roll-btn-big" id="roll-btn" onclick="rollDice()" disabled>
+            <span class="roll-icon">🎲</span>
+            <span class="roll-text">Roll Dice</span>
+          </button>
+          <div id="roll-result" class="roll-result hidden"></div>
         </div>
-        <button class="roll-btn-big" id="roll-btn" onclick="rollDice()" disabled>
-          <span class="roll-icon">🎲</span>
-          <span class="roll-text">Roll Dice</span>
-        </button>
-        <div id="roll-result" class="roll-result hidden"></div>
-      </div>
 
-      <!-- PLAYER LIST -->
-      <div class="panel-card">
-        <div class="panel-title">👥 Players</div>
-        <div id="player-panel"></div>
-      </div>
+        <!-- PLAYER LIST -->
+        <div class="panel-card">
+          <div class="panel-title">👥 Players</div>
+          <div id="player-panel"></div>
+        </div>
 
-      <!-- MY PROPERTIES -->
-      <div class="panel-card">
-        <div class="panel-title">🏙️ My Properties</div>
-        <div id="my-props"><div class="empty-hint">Roll to start buying!</div></div>
-      </div>
+        <!-- MY PROPERTIES -->
+        <div class="panel-card">
+          <div class="panel-title">🏙️ My Properties</div>
+          <div id="my-props"><div class="empty-hint">Roll to start buying!</div></div>
+        </div>
 
-      <!-- CARD LOG -->
-      <div class="panel-card">
-        <div class="panel-title">📋 Recent Actions</div>
-        <div id="card-log"><div class="empty-hint">No actions yet</div></div>
-      </div>
+        <!-- CARD LOG -->
+        <div class="panel-card">
+          <div class="panel-title">📋 Recent Actions</div>
+          <div id="card-log"><div class="empty-hint">No actions yet</div></div>
+        </div>
+
+      </div><!-- /#tab-game -->
+
+      <!-- CHAT TAB CONTENT -->
+      <div id="tab-chat" class="tab-content hidden">
+        <div class="chat-panel">
+          <div class="chat-title">💬 Game Chat</div>
+          <div id="chat-messages" class="chat-messages"></div>
+          <div class="chat-input-row">
+            <input id="chat-input" class="chat-input" type="text" maxlength="200" placeholder="Type a message…" autocomplete="off" onkeydown="if(event.key==='Enter')sendChat()"/>
+            <button class="chat-send-btn" onclick="sendChat()">➤</button>
+          </div>
+        </div>
+      </div><!-- /#tab-chat -->
 
     </aside>
   </div><!-- /.game-body -->
@@ -294,12 +334,10 @@
   <!-- PROPERTY CARD MODAL -->
   <div id="prop-card-modal" class="modal-overlay hidden" onclick="closePropCard(event)">
     <div class="prop-card-box" onclick="event.stopPropagation()">
-      <!-- Color group header -->
       <div id="pc-header" class="pc-header">
         <div id="pc-type-badge" class="pc-type-badge">PROPERTY</div>
         <button class="pc-close-btn" onclick="closePropCard()">✕</button>
       </div>
-      <!-- Card body -->
       <div class="pc-body">
         <div id="pc-icon" class="pc-icon">🏙️</div>
         <div id="pc-name" class="pc-name">City Name</div>
@@ -307,7 +345,6 @@
           <span id="pc-owner-dot" class="pc-owner-dot"></span>
           <span id="pc-owner-name">Owned by —</span>
         </div>
-
         <div class="pc-price-row">
           <div class="pc-price-box">
             <div class="pc-price-label">PRICE</div>
@@ -318,18 +355,72 @@
             <div id="pc-mortgage" class="pc-price-val" style="color:#aab">₹0</div>
           </div>
         </div>
-
-        <!-- Rent table -->
         <div class="pc-rent-table" id="pc-rent-table"></div>
-
-        <!-- Buildings -->
         <div id="pc-buildings" class="pc-buildings hidden">
           <div class="pc-bld-label">BUILDINGS</div>
           <div id="pc-bld-icons" class="pc-bld-icons"></div>
         </div>
-
-        <!-- Action buttons -->
         <div id="pc-actions" class="pc-actions eb-row"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRADE MODAL (initiator) -->
+  <div id="trade-modal" class="modal-overlay hidden" onclick="closeTradeModal(event)">
+    <div class="trade-box" onclick="event.stopPropagation()">
+      <div class="trade-header">
+        <span class="trade-title">🤝 Create Trade Offer</span>
+        <button class="pc-close-btn" onclick="closeTradeModal()">✕</button>
+      </div>
+      <div class="trade-target-info" id="trade-target-info"></div>
+      <div class="trade-body">
+        <!-- LEFT: Your offer -->
+        <div class="trade-col">
+          <div class="trade-col-title">📤 You Offer</div>
+          <div class="trade-section-label">Your Properties</div>
+          <div id="trade-my-props" class="trade-prop-list"></div>
+          <div class="trade-section-label">Cash Offer</div>
+          <input id="trade-offer-money" class="form-input" type="number" min="0" placeholder="₹0" style="margin-bottom:0"/>
+        </div>
+        <!-- RIGHT: You request -->
+        <div class="trade-col">
+          <div class="trade-col-title">📥 You Request</div>
+          <div class="trade-section-label">Their Properties</div>
+          <div id="trade-their-props" class="trade-prop-list"></div>
+          <div class="trade-section-label">Cash Request</div>
+          <input id="trade-request-money" class="form-input" type="number" min="0" placeholder="₹0" style="margin-bottom:0"/>
+        </div>
+      </div>
+      <div class="eb-row" style="margin-top:16px">
+        <button class="ebtn primary" onclick="submitTrade()">📨 Send Offer</button>
+        <button class="ebtn secondary" onclick="closeTradeModal()">Cancel</button>
+      </div>
+      <p id="trade-err" class="err-msg" style="margin-top:8px"></p>
+    </div>
+  </div>
+
+  <!-- TRADE INCOMING MODAL (receiver) -->
+  <div id="trade-incoming-modal" class="modal-overlay hidden">
+    <div class="trade-box" onclick="event.stopPropagation()">
+      <div class="trade-header">
+        <span class="trade-title">📬 Trade Offer Received!</span>
+      </div>
+      <div id="trade-from-info" class="trade-target-info"></div>
+      <div class="trade-body">
+        <div class="trade-col">
+          <div class="trade-col-title">📤 They Offer</div>
+          <div id="incoming-offer-props" class="trade-incoming-list"></div>
+          <div id="incoming-offer-money" class="trade-money-display"></div>
+        </div>
+        <div class="trade-col">
+          <div class="trade-col-title">📥 They Request</div>
+          <div id="incoming-request-props" class="trade-incoming-list"></div>
+          <div id="incoming-request-money" class="trade-money-display"></div>
+        </div>
+      </div>
+      <div class="eb-row" style="margin-top:16px">
+        <button class="ebtn primary" id="btn-accept-trade" onclick="respondTrade('accept')">✅ Accept</button>
+        <button class="ebtn danger" onclick="respondTrade('reject')">❌ Reject</button>
       </div>
     </div>
   </div>
@@ -338,6 +429,7 @@
   <div id="winner-modal" class="modal-overlay hidden">
     <div class="modal-box winner-box">
       <div class="winner-confetti">🎊</div>
+      <div id="winner-avatar" class="winner-avatar">👑</div>
       <div class="winner-trophy">🏆</div>
       <h2 id="winner-name">Player Wins!</h2>
       <p class="winner-sub">All other players are bankrupt.</p>
