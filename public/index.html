@@ -3,27 +3,27 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Business India – Multiplayer</title>
-<meta name="description" content="Real-time multiplayer Business India board game with chat, trading and avatars."/>
+<meta name="description" content="Real-time multiplayer Business India board game."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
-<!-- TOAST CONTAINER -->
+<!-- TOAST -->
 <div id="toast-container"></div>
 
-<!-- RECONNECTING BANNER -->
+<!-- RECONNECT BANNER -->
 <div id="reconnect-banner" class="hidden">
-  <div class="rc-inner"><span class="rc-spin">⏳</span> Reconnecting to game… please wait</div>
+  <div class="rc-inner"><span class="rc-spin">⏳</span> Reconnecting… please wait</div>
 </div>
 
-<!-- EXIT CONFIRM -->
+<!-- EXIT CONFIRM MODAL -->
 <div id="exit-overlay" class="modal-overlay hidden">
   <div class="modal-box">
     <div class="modal-icon">🚪</div>
     <h3>Leave Game?</h3>
-    <p>Your properties will be returned to the bank. This cannot be undone.</p>
+    <p>Your properties return to the bank. This cannot be undone.</p>
     <div class="eb-row">
       <button class="ebtn danger" onclick="confirmExit()">Yes, Exit</button>
       <button class="ebtn secondary" onclick="closeExitDialog()">Cancel</button>
@@ -31,9 +31,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     SCREEN: ENTER
-══════════════════════════════════════════ -->
+<!-- ══════════════════ SCREEN: ENTER ══════════════════ -->
 <div id="screen-enter" class="screen active">
   <div class="stars-bg"></div>
   <div class="enter-card">
@@ -43,18 +41,17 @@
       <p class="logo-sub">Real-time Multiplayer Board Game</p>
     </div>
 
-    <!-- AVATAR SELECTION -->
     <div class="form-group">
       <label class="form-label">Choose Your Avatar</label>
       <div class="avatar-grid" id="avatar-grid">
         <div class="av-option selected" data-av="businessman" title="Businessman">👔</div>
-        <div class="av-option" data-av="robot"       title="Robot">🤖</div>
-        <div class="av-option" data-av="king"        title="King">👑</div>
-        <div class="av-option" data-av="queen"       title="Queen">👸</div>
-        <div class="av-option" data-av="tiger"       title="Tiger">🐯</div>
-        <div class="av-option" data-av="lion"        title="Lion">🦁</div>
-        <div class="av-option" data-av="ninja"       title="Ninja">🥷</div>
-        <div class="av-option" data-av="astronaut"   title="Astronaut">🧑‍🚀</div>
+        <div class="av-option" data-av="robot"      title="Robot">🤖</div>
+        <div class="av-option" data-av="king"       title="King">👑</div>
+        <div class="av-option" data-av="queen"      title="Queen">👸</div>
+        <div class="av-option" data-av="tiger"      title="Tiger">🐯</div>
+        <div class="av-option" data-av="lion"       title="Lion">🦁</div>
+        <div class="av-option" data-av="ninja"      title="Ninja">🥷</div>
+        <div class="av-option" data-av="astronaut"  title="Astronaut">🧑‍🚀</div>
       </div>
     </div>
 
@@ -74,9 +71,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     SCREEN: LOBBY
-══════════════════════════════════════════ -->
+<!-- ══════════════════ SCREEN: LOBBY ══════════════════ -->
 <div id="screen-lobby" class="screen">
   <div class="stars-bg"></div>
   <div class="lobby-card">
@@ -85,7 +80,7 @@
       <span class="rc-label">Room Code</span>
       <div class="rc-code-row">
         <strong id="lobby-roomcode" class="rc-code">—</strong>
-        <button class="copy-btn" onclick="copyRoomCode()" title="Copy code">📋</button>
+        <button class="copy-btn" onclick="copyRoomCode()" title="Copy">📋</button>
       </div>
       <span class="rc-hint">Share with friends to join</span>
     </div>
@@ -99,9 +94,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     SCREEN: GAME
-══════════════════════════════════════════ -->
+<!-- ══════════════════ SCREEN: GAME ══════════════════ -->
 <div id="screen-game" class="screen">
 
   <!-- TOP BAR -->
@@ -124,26 +117,62 @@
     </div>
   </header>
 
-  <!-- COUNTDOWN OVERLAY -->
+  <!-- COUNTDOWN PILL -->
   <div id="countdown-overlay" class="countdown-overlay hidden">
     <div class="countdown-pill" id="countdown-pill">Next turn in <span id="countdown-num">3</span>…</div>
   </div>
 
-  <!-- GAME BODY -->
+  <!-- THREE-COLUMN GAME BODY -->
   <div class="game-body">
 
-    <!-- BOARD -->
+    <!-- ════ LEFT PANEL ════ -->
+    <div class="left-panel">
+
+      <!-- DICE -->
+      <div class="dice-section">
+        <div class="dice-display">
+          <div class="die-3d" id="d1">⚀</div>
+          <div class="die-3d" id="d2">⚀</div>
+        </div>
+        <button class="roll-btn-big" id="roll-btn" onclick="rollDice()" disabled>
+          <span class="roll-icon">🎲</span>
+          <span class="roll-text">Roll Dice</span>
+        </button>
+        <div id="roll-result" class="roll-result hidden"></div>
+      </div>
+
+      <!-- PLAYERS -->
+      <div class="panel-card">
+        <div class="panel-title">👥 Players</div>
+        <div id="player-panel"></div>
+      </div>
+
+      <!-- MY PROPERTIES -->
+      <div class="panel-card">
+        <div class="panel-title">🏙️ My Properties</div>
+        <div id="my-props"><div class="empty-hint">Roll to start buying!</div></div>
+      </div>
+
+      <!-- CARD LOG -->
+      <div class="panel-card">
+        <div class="panel-title">📋 Recent Actions</div>
+        <div id="card-log"><div class="empty-hint">No actions yet</div></div>
+      </div>
+
+    </div><!-- /.left-panel -->
+
+    <!-- ════ BOARD CENTER ════ -->
     <div class="board-scene">
       <div class="scene">
         <div class="board-wrap">
           <div class="board" id="board">
 
-            <!-- [1] JAIL corner -->
+            <!-- JAIL corner -->
             <div class="corner c-jail" data-sq="28"><div class="tok-area" id="sq28"></div>
               <div class="ce">⛓️</div><div class="cl">JAIL</div><div class="cs">Fine ₹500</div>
             </div>
 
-            <!-- [2] TOP EDGE -->
+            <!-- TOP EDGE -->
             <div class="edge-top">
               <span class="dir-lbl">◀</span>
               <div class="prop" data-sq="20"><div class="tok-area" id="sq20"></div><div class="owner-bar"></div><div class="prop-band" style="background:#3F51B5;height:10px"></div><div class="prop-body"><span class="pi">⛩️</span><span class="pn">AMRITSAR</span><span class="pp">₹3,300</span></div></div>
@@ -156,12 +185,12 @@
               <div class="prop" data-sq="27"><div class="tok-area" id="sq27"></div><div class="owner-bar"></div><div class="prop-band" style="background:#795548;height:10px"></div><div class="prop-body"><span class="pi">🏯</span><span class="pn">DELHI</span><span class="pp">₹6,000</span></div></div>
             </div>
 
-            <!-- [3] CLUB corner -->
+            <!-- CLUB corner -->
             <div class="corner c-club" data-sq="19"><div class="tok-area" id="sq19"></div>
               <div class="ce">🎰</div><div class="cl">CLUB</div><div class="cs">Entry ₹100</div>
             </div>
 
-            <!-- [4] LEFT EDGE -->
+            <!-- LEFT EDGE -->
             <div class="edge-left">
               <span class="dir-lbl">▼</span>
               <div class="prop" data-sq="29"><div class="tok-area" id="sq29"></div><div class="owner-bar"></div><div class="prop-band" style="background:#E91E63;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🌸</span><span class="pn">JAIPUR</span><span class="pp">₹3,000</span></div></div>
@@ -174,52 +203,42 @@
               <div class="prop" data-sq="36"><div class="tok-area" id="sq36"></div><div class="owner-bar"></div><div class="prop-band" style="background:#FF5722;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🏛️</span><span class="pn">MUMBAI</span><span class="pp">₹8,500</span></div></div>
             </div>
 
-            <!-- [5] CENTER -->
+            <!-- CENTER -->
             <div class="board-inner">
               <div class="cq">
                 <div class="card-box chance-box"><div class="cc">
-                  <div class="ctit">🎴 CHANCE</div>
-                  <div class="csub">Server-drawn cards</div>
+                  <div class="ctit">🎴 CHANCE</div><div class="csub">Server-drawn</div>
                   <div class="crul"><span>🎰</span><span>Lottery +₹2,500</span></div>
-                  <div class="crul"><span>🏆</span><span>Win +₹1,000–3,000</span></div>
+                  <div class="crul"><span>🏆</span><span>Win +₹1–3k</span></div>
                   <div class="crul"><span>🚀</span><span>Go to START</span></div>
                   <div class="crul"><span>💸</span><span>Fine -₹500</span></div>
-                  <div class="crul"><span>🏠</span><span>Repairs -₹1,500</span></div>
-                  <div class="crul"><span>🔥</span><span>Fire -₹3,000</span></div>
                 </div></div>
                 <div class="card-box comm-box"><div class="cc">
-                  <div class="ctit">📦 COMMUNITY CHEST</div>
-                  <div class="csub">Server-drawn cards</div>
-                  <div class="crul"><span>🎂</span><span>Birthday ₹500 ea.</span></div>
+                  <div class="ctit">📦 COMMUNITY</div><div class="csub">Server-drawn</div>
+                  <div class="crul"><span>🎂</span><span>Birthday ₹500</span></div>
                   <div class="crul"><span>🏨</span><span>Hotel +₹1,500</span></div>
-                  <div class="crul"><span>💒</span><span>Marriage +₹2,000</span></div>
                   <div class="crul"><span>🔒</span><span>Go to JAIL!</span></div>
-                  <div class="crul"><span>🏥</span><span>Medical -₹1,000</span></div>
-                  <div class="crul"><span>💊</span><span>Insurance -₹1,500</span></div>
+                  <div class="crul"><span>🏥</span><span>Medical -₹1k</span></div>
                 </div></div>
                 <div class="card-box chance2-box"><div class="cc">
-                  <div class="ctit">🎴 CHANCE</div>
-                  <div class="csub">Auto-resolved server side</div>
+                  <div class="ctit">🎴 CHANCE</div><div class="csub">Auto-resolved</div>
                   <div class="crul"><span>🏅</span><span>Export +₹3,000</span></div>
                   <div class="crul"><span>📈</span><span>Stocks +₹3,000</span></div>
                   <div class="crul"><span>💰</span><span>Refund +₹2,000</span></div>
                   <div class="crul"><span>🔥</span><span>Fire -₹3,000</span></div>
-                  <div class="crul"><span>💸</span><span>Fine -₹500</span></div>
                 </div></div>
                 <div class="card-box comm2-box"><div class="cc">
-                  <div class="ctit">📦 COMMUNITY CHEST</div>
-                  <div class="csub">Auto-resolved server side</div>
-                  <div class="crul"><span>🎂</span><span>Birthday ₹500 ea.</span></div>
+                  <div class="ctit">📦 COMMUNITY</div><div class="csub">Auto-resolved</div>
+                  <div class="crul"><span>🎂</span><span>Birthday ₹500</span></div>
                   <div class="crul"><span>🏆</span><span>Bonus +₹2,500</span></div>
-                  <div class="crul"><span>💒</span><span>Marriage +₹2,000</span></div>
-                  <div class="crul"><span>🔒</span><span>Go to JAIL!</span></div>
-                  <div class="crul"><span>💊</span><span>Insurance -₹1,500</span></div>
+                  <div class="crul"><span>💒</span><span>Marriage +₹2k</span></div>
+                  <div class="crul"><span>💊</span><span>Insurance -₹1.5k</span></div>
                 </div></div>
                 <div class="ct-wrap"><div class="ct">Business<br>India</div></div>
               </div>
             </div>
 
-            <!-- [6] RIGHT EDGE -->
+            <!-- RIGHT EDGE -->
             <div class="edge-right">
               <span class="dir-lbl">▲</span>
               <div class="prop" data-sq="10"><div class="tok-area" id="sq10"></div><div class="owner-bar"></div><div class="prop-band" style="background:#F44336;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🕌</span><span class="pn">HYDERABAD</span><span class="pp">₹3,500</span></div></div>
@@ -233,12 +252,12 @@
               <div class="prop" data-sq="18"><div class="tok-area" id="sq18"></div><div class="owner-bar"></div><div class="prop-band" style="background:#FF9800;width:11px;height:100%"></div><div class="prop-body"><span class="pi">🏔️</span><span class="pn">SRINAGAR</span><span class="pp">₹5,000</span></div></div>
             </div>
 
-            <!-- [7] START corner -->
+            <!-- START corner -->
             <div class="corner c-start glowing" data-sq="0"><div class="tok-area" id="sq0"></div>
               <div class="ce">🟢</div><div class="cl">START</div><div class="cs">Land/Pass<br>+₹1,500</div>
             </div>
 
-            <!-- [8] BOTTOM EDGE -->
+            <!-- BOTTOM EDGE -->
             <div class="edge-bottom">
               <span class="dir-lbl">▶</span>
               <div class="prop" data-sq="1"><div class="tok-area" id="sq1"></div><div class="owner-bar"></div><div class="prop-band" style="background:#4CAF50;height:10px"></div><div class="prop-body"><span class="pi">🌴</span><span class="pn">GOA</span><span class="pp">₹4,000</span></div></div>
@@ -251,75 +270,41 @@
               <div class="prop" data-sq="8"><div class="tok-area" id="sq8"></div><div class="owner-bar"></div><div class="prop-band" style="background:#9C27B0;height:10px"></div><div class="prop-body"><span class="pi">🛕</span><span class="pn">CHENNAI</span><span class="pp">₹7,000</span></div></div>
             </div>
 
-            <!-- [9] REST HOUSE corner -->
+            <!-- REST HOUSE corner -->
             <div class="corner c-rest" data-sq="9"><div class="tok-area" id="sq9"></div>
               <div class="ce">🏠</div><div class="cl">REST<br>HOUSE</div><div class="cs">Stay ₹300</div>
             </div>
 
           </div><!-- /.board -->
-        </div><!-- /.board-wrap -->
-      </div><!-- /.scene -->
+        </div>
+      </div>
     </div><!-- /.board-scene -->
 
-    <!-- RIGHT PANEL -->
-    <aside class="right-panel">
-
-      <!-- MOBILE TAB BAR -->
-      <div class="mobile-tabs">
-        <button class="mtab active" id="mtab-game" onclick="switchTab('game')">🎮 Game</button>
-        <button class="mtab" id="mtab-chat" onclick="switchTab('chat')">💬 Chat <span id="chat-badge" class="chat-badge hidden">0</span></button>
+    <!-- ════ RIGHT PANEL = CHAT (always desktop, drawer mobile) ════ -->
+    <div class="right-panel" id="right-panel">
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <span class="chat-header-icon">💬</span>
+          <span class="chat-header-title">Game Chat</span>
+        </div>
+        <button class="chat-close-btn" onclick="closeMobileChat()" title="Close chat">✕</button>
       </div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" class="chat-input" type="text" maxlength="200"
+          placeholder="Type a message…" autocomplete="off"
+          onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button class="chat-send-btn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
 
-      <!-- GAME TAB CONTENT -->
-      <div id="tab-game" class="tab-content">
-
-        <!-- DICE SECTION -->
-        <div class="dice-section">
-          <div class="dice-display">
-            <div class="die-3d" id="d1">⚀</div>
-            <div class="die-3d" id="d2">⚀</div>
-          </div>
-          <button class="roll-btn-big" id="roll-btn" onclick="rollDice()" disabled>
-            <span class="roll-icon">🎲</span>
-            <span class="roll-text">Roll Dice</span>
-          </button>
-          <div id="roll-result" class="roll-result hidden"></div>
-        </div>
-
-        <!-- PLAYER LIST -->
-        <div class="panel-card">
-          <div class="panel-title">👥 Players</div>
-          <div id="player-panel"></div>
-        </div>
-
-        <!-- MY PROPERTIES -->
-        <div class="panel-card">
-          <div class="panel-title">🏙️ My Properties</div>
-          <div id="my-props"><div class="empty-hint">Roll to start buying!</div></div>
-        </div>
-
-        <!-- CARD LOG -->
-        <div class="panel-card">
-          <div class="panel-title">📋 Recent Actions</div>
-          <div id="card-log"><div class="empty-hint">No actions yet</div></div>
-        </div>
-
-      </div><!-- /#tab-game -->
-
-      <!-- CHAT TAB CONTENT -->
-      <div id="tab-chat" class="tab-content hidden">
-        <div class="chat-panel">
-          <div class="chat-title">💬 Game Chat</div>
-          <div id="chat-messages" class="chat-messages"></div>
-          <div class="chat-input-row">
-            <input id="chat-input" class="chat-input" type="text" maxlength="200" placeholder="Type a message…" autocomplete="off" onkeydown="if(event.key==='Enter')sendChat()"/>
-            <button class="chat-send-btn" onclick="sendChat()">➤</button>
-          </div>
-        </div>
-      </div><!-- /#tab-chat -->
-
-    </aside>
   </div><!-- /.game-body -->
+
+  <!-- MOBILE CHAT FAB -->
+  <button class="chat-fab" id="chat-fab" onclick="toggleMobileChat()">
+    💬
+    <span class="fab-badge hidden" id="chat-fab-badge">0</span>
+  </button>
 
   <!-- EVENT MODAL -->
   <div id="evt-modal" class="modal-overlay hidden">
@@ -350,9 +335,9 @@
             <div class="pc-price-label">PRICE</div>
             <div id="pc-price" class="pc-price-val">₹0</div>
           </div>
-          <div id="pc-mortgage-box" class="pc-price-box">
+          <div class="pc-price-box">
             <div class="pc-price-label">MORTGAGE</div>
-            <div id="pc-mortgage" class="pc-price-val" style="color:#aab">₹0</div>
+            <div id="pc-mortgage" class="pc-price-val" style="color:#7a8ba0">₹0</div>
           </div>
         </div>
         <div class="pc-rent-table" id="pc-rent-table"></div>
@@ -374,34 +359,32 @@
       </div>
       <div class="trade-target-info" id="trade-target-info"></div>
       <div class="trade-body">
-        <!-- LEFT: Your offer -->
         <div class="trade-col">
           <div class="trade-col-title">📤 You Offer</div>
           <div class="trade-section-label">Your Properties</div>
           <div id="trade-my-props" class="trade-prop-list"></div>
           <div class="trade-section-label">Cash Offer</div>
-          <input id="trade-offer-money" class="form-input" type="number" min="0" placeholder="₹0" style="margin-bottom:0"/>
+          <input id="trade-offer-money" class="form-input" type="number" min="0" placeholder="₹0"/>
         </div>
-        <!-- RIGHT: You request -->
         <div class="trade-col">
           <div class="trade-col-title">📥 You Request</div>
           <div class="trade-section-label">Their Properties</div>
           <div id="trade-their-props" class="trade-prop-list"></div>
           <div class="trade-section-label">Cash Request</div>
-          <input id="trade-request-money" class="form-input" type="number" min="0" placeholder="₹0" style="margin-bottom:0"/>
+          <input id="trade-request-money" class="form-input" type="number" min="0" placeholder="₹0"/>
         </div>
       </div>
       <div class="eb-row" style="margin-top:16px">
         <button class="ebtn primary" onclick="submitTrade()">📨 Send Offer</button>
         <button class="ebtn secondary" onclick="closeTradeModal()">Cancel</button>
       </div>
-      <p id="trade-err" class="err-msg" style="margin-top:8px"></p>
+      <p id="trade-err" class="err-msg" style="margin-top:8px;text-align:center"></p>
     </div>
   </div>
 
-  <!-- TRADE INCOMING MODAL (receiver) -->
+  <!-- TRADE INCOMING MODAL -->
   <div id="trade-incoming-modal" class="modal-overlay hidden">
-    <div class="trade-box" onclick="event.stopPropagation()">
+    <div class="trade-box">
       <div class="trade-header">
         <span class="trade-title">📬 Trade Offer Received!</span>
       </div>
@@ -419,8 +402,8 @@
         </div>
       </div>
       <div class="eb-row" style="margin-top:16px">
-        <button class="ebtn primary" id="btn-accept-trade" onclick="respondTrade('accept')">✅ Accept</button>
-        <button class="ebtn danger" onclick="respondTrade('reject')">❌ Reject</button>
+        <button class="ebtn primary" onclick="respondTrade('accept')">✅ Accept</button>
+        <button class="ebtn danger"  onclick="respondTrade('reject')">❌ Reject</button>
       </div>
     </div>
   </div>
@@ -429,7 +412,7 @@
   <div id="winner-modal" class="modal-overlay hidden">
     <div class="modal-box winner-box">
       <div class="winner-confetti">🎊</div>
-      <div id="winner-avatar" class="winner-avatar">👑</div>
+      <div id="winner-avatar" class="winner-avatar-badge">👑</div>
       <div class="winner-trophy">🏆</div>
       <h2 id="winner-name">Player Wins!</h2>
       <p class="winner-sub">All other players are bankrupt.</p>
