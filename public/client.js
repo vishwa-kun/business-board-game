@@ -643,12 +643,8 @@ socket.on('dice-rolled', ({ v1, v2, steps, G: newG, result, winner }) => {
       }
       return; // No countdown for buy – waits for player decision
     case 'cannot_buy':
-      if (isMe) {
-        // Show prop card in view-only + skip mode so player sees what they can't afford
-        showPropCard(result.sqId, { cannotAfford: true });
-      } else {
-        toast(`${p.name} can't afford ${sqName}.`, 'bad', 2500);
-      }
+      // Don't show the property card — just notify and let the server auto-advance
+      toast(isMe ? `💸 Not enough funds to buy ${sqName}.` : `${p.name} can't afford ${sqName}.`, 'bad', 2500);
       break;
     case 'rent':
       toast(`${p.name} paid ₹${result.paid.toLocaleString()} rent to ${result.ownerName}.`, isMe ? 'bad' : 'info'); break;
