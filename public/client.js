@@ -26,21 +26,49 @@ function clearSession() {
 let G = null, timerIv = null, countdownIv = null;
 
 const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
-const SQUARES = [
-  {id:0,name:'START'},{id:1,name:'Goa'},{id:2,name:'Motor Boat'},
-  {id:3,name:'Cochin'},{id:4,name:'Mysore'},{id:5,name:'Wealth Tax'},
-  {id:6,name:'Bengaluru'},{id:7,name:'Community Chest'},{id:8,name:'Chennai'},
-  {id:9,name:'REST HOUSE'},{id:10,name:'Hyderabad'},{id:11,name:'Kolkata'},
-  {id:12,name:'Air India'},{id:13,name:'Darjeeling'},{id:14,name:'Patna'},
-  {id:15,name:'Kanpur'},{id:16,name:'Chance'},{id:17,name:'Agra'},
-  {id:18,name:'Srinagar'},{id:19,name:'CLUB'},{id:20,name:'Amritsar'},
-  {id:21,name:'Shimla'},{id:22,name:'BEST'},{id:23,name:'Electric Co.'},
-  {id:24,name:'Chandigarh'},{id:25,name:'Community Chest'},{id:26,name:'Lucknow'},
-  {id:27,name:'Delhi'},{id:28,name:'JAIL'},{id:29,name:'Jaipur'},
-  {id:30,name:'Chance'},{id:31,name:'Indore'},{id:32,name:'Income Tax'},
-  {id:33,name:'Ahmedabad'},{id:34,name:'Railways'},{id:35,name:'Water Works'},
-  {id:36,name:'Mumbai'}
+
+// Full square data (mirrors server.js SQUARES) used for property cards
+const SQUARES_FULL = [
+  {id:0,  name:'START',           type:'corner'},
+  {id:1,  name:'Goa',             type:'property', price:4000,  rent:[400,800,1600,2400,3200],   group:'#4CAF50', icon:'🌴'},
+  {id:2,  name:'Motor Boat',      type:'transport', price:5500,  rent:[500,1000,1500,2000],        group:'#607D8B', icon:'🚤'},
+  {id:3,  name:'Cochin',          type:'property',  price:3000,  rent:[300,600,1200,1800,2400],   group:'#4CAF50', icon:'⚓'},
+  {id:4,  name:'Mysore',          type:'property',  price:2500,  rent:[250,500,1000,1500,2000],   group:'#4CAF50', icon:'🏯'},
+  {id:5,  name:'Wealth Tax',      type:'tax',        amount:750,                                               icon:'💰'},
+  {id:6,  name:'Bengaluru',       type:'property',  price:4000,  rent:[400,800,1600,2400,3200],   group:'#9C27B0', icon:'💻'},
+  {id:7,  name:'Community Chest', type:'chest',                                                               icon:'📦'},
+  {id:8,  name:'Chennai',         type:'property',  price:7000,  rent:[700,1400,2800,4200,5600],  group:'#9C27B0', icon:'🛕'},
+  {id:9,  name:'REST HOUSE',      type:'corner'},
+  {id:10, name:'Hyderabad',       type:'property',  price:3500,  rent:[350,700,1400,2100,2800],   group:'#F44336', icon:'🕌'},
+  {id:11, name:'Kolkata',         type:'property',  price:6500,  rent:[650,1300,2600,3900,5200],  group:'#F44336', icon:'🌉'},
+  {id:12, name:'Air India',       type:'transport', price:10500, rent:[1000,2000,3000,4000],       group:'#607D8B', icon:'✈️'},
+  {id:13, name:'Darjeeling',      type:'property',  price:2500,  rent:[250,500,1000,1500,2000],   group:'#00BCD4', icon:'🍵'},
+  {id:14, name:'Patna',           type:'property',  price:2000,  rent:[200,400,800,1200,1600],    group:'#00BCD4', icon:'🏞️'},
+  {id:15, name:'Kanpur',          type:'property',  price:4000,  rent:[400,800,1600,2400,3200],   group:'#00BCD4', icon:'🏭'},
+  {id:16, name:'Chance',          type:'chance',                                                              icon:'🎴'},
+  {id:17, name:'Agra',            type:'property',  price:2500,  rent:[250,500,1000,1500,2000],   group:'#FF9800', icon:'🏰'},
+  {id:18, name:'Srinagar',        type:'property',  price:5000,  rent:[500,1000,2000,3000,4000],  group:'#FF9800', icon:'🏔️'},
+  {id:19, name:'CLUB',            type:'corner'},
+  {id:20, name:'Amritsar',        type:'property',  price:3300,  rent:[330,660,1320,1980,2640],   group:'#3F51B5', icon:'⛩️'},
+  {id:21, name:'Shimla',          type:'property',  price:3500,  rent:[350,700,1400,2100,2800],   group:'#3F51B5', icon:'⛰️'},
+  {id:22, name:'BEST',            type:'property',  price:2200,  rent:[220,440,880,1320,1760],    group:'#3F51B5', icon:'🚌'},
+  {id:23, name:'Electric Co.',    type:'utility',   price:2500,  rent:[150,300],                   group:'#FFC107', icon:'💡'},
+  {id:24, name:'Chandigarh',      type:'property',  price:2500,  rent:[250,500,1000,1500,2000],   group:'#795548', icon:'🌿'},
+  {id:25, name:'Community Chest', type:'chest',                                                               icon:'📦'},
+  {id:26, name:'Lucknow',         type:'property',  price:3000,  rent:[300,600,1200,1800,2400],   group:'#795548', icon:'🕌'},
+  {id:27, name:'Delhi',           type:'property',  price:6000,  rent:[600,1200,2400,3600,4800],  group:'#795548', icon:'🏯'},
+  {id:28, name:'JAIL',            type:'corner'},
+  {id:29, name:'Jaipur',          type:'property',  price:3000,  rent:[300,600,1200,1800,2400],   group:'#E91E63', icon:'🌸'},
+  {id:30, name:'Chance',          type:'chance',                                                              icon:'🎴'},
+  {id:31, name:'Indore',          type:'property',  price:1500,  rent:[150,300,600,900,1200],     group:'#E91E63', icon:'🌮'},
+  {id:32, name:'Income Tax',      type:'tax',        amount:1000,                                              icon:'📄'},
+  {id:33, name:'Ahmedabad',       type:'property',  price:4000,  rent:[400,800,1600,2400,3200],   group:'#FF5722', icon:'💎'},
+  {id:34, name:'Railways',        type:'transport', price:9500,  rent:[2500,3500,4500,5500],       group:'#607D8B', icon:'🚂'},
+  {id:35, name:'Water Works',     type:'utility',   price:3200,  rent:[150,300],                   group:'#03A9F4', icon:'💧'},
+  {id:36, name:'Mumbai',          type:'property',  price:8500,  rent:[850,1700,3400,5100,6800],  group:'#FF5722', icon:'🏛️'},
 ];
+// Simple name-only array kept for legacy lookups
+const SQUARES = SQUARES_FULL.map(s => ({id: s.id, name: s.name}));
 
 // ── Screens ────────────────────────────────────────────────
 function showScreen(id) {
@@ -202,13 +230,17 @@ function renderMyProps(state) {
     el.innerHTML = '<div class="empty-hint">None yet</div>'; return;
   }
   me.props.forEach(sid => {
-    const sq = SQUARES[sid];
+    const sq = SQUARES_FULL[sid];
     const b  = state.buildings?.[sid];
     const bldg = b ? (b.hotel ? ' 🏨' : ' 🏠'.repeat(b.houses)) : '';
     const d = document.createElement('div');
     d.className = 'mpi';
-    d.innerHTML = `<div class="mpidot" style="background:${me.color}"></div>
+    d.title = 'Click to view property card';
+    // Color band matching the group
+    const groupColor = sq?.group || '#555';
+    d.innerHTML = `<div class="mpidot" style="background:${groupColor};box-shadow:0 0 5px ${groupColor}88"></div>
       <span>${sq?.name}${bldg}</span>`;
+    d.addEventListener('click', () => showPropCard(sid, { viewOnly: true }));
     el.appendChild(d);
   });
 }
@@ -288,7 +320,6 @@ function rollDice() {
   }, 55);
 }
 
-// ── Event modal ────────────────────────────────────────────
 function showEvent(icon, title, body, buttons) {
   document.getElementById('evt-icon').textContent  = icon;
   document.getElementById('evt-title').textContent = title;
@@ -305,6 +336,161 @@ function showEvent(icon, title, body, buttons) {
   document.getElementById('evt-modal').classList.remove('hidden');
 }
 function closeEvt() { document.getElementById('evt-modal').classList.add('hidden'); }
+
+// ── Property Card ──────────────────────────────────────────
+/**
+ * Show the city/property card modal.
+ * @param {number} sqId  - board square id
+ * @param {object} opts  - { canBuy, cannotAfford, viewOnly }
+ *   canBuy: show Buy + Skip buttons (it's my turn, unowned, I can afford)
+ *   cannotAfford: show Skip-only + "Can't afford" hint
+ *   viewOnly: just info, no action buttons
+ */
+function showPropCard(sqId, opts = {}) {
+  const sq = SQUARES_FULL[sqId];
+  if (!sq || !sq.price) return; // not a purchasable square
+
+  // Header color
+  const hdr = document.getElementById('pc-header');
+  const groupColor = sq.group || '#607D8B';
+  hdr.style.background = `linear-gradient(135deg, ${groupColor}dd, ${groupColor}88)`;
+  hdr.style.boxShadow  = `0 4px 20px ${groupColor}66`;
+
+  // Type badge
+  const typeBadge = document.getElementById('pc-type-badge');
+  const typeLabels = { property:'Property', transport:'Transport', utility:'Utility' };
+  typeBadge.textContent = typeLabels[sq.type] || 'Property';
+
+  // Icon & name
+  document.getElementById('pc-icon').textContent = sq.icon || '🏙️';
+  document.getElementById('pc-name').textContent = sq.name;
+
+  // Owner
+  const ownerBar = document.getElementById('pc-owner-bar');
+  if (G && G.ownership[sqId] !== undefined && G.ownership[sqId] !== null) {
+    const owner = G.players[G.ownership[sqId]];
+    if (owner) {
+      document.getElementById('pc-owner-dot').style.background   = owner.color;
+      document.getElementById('pc-owner-dot').style.boxShadow    = `0 0 6px ${owner.color}`;
+      document.getElementById('pc-owner-name').textContent = `Owned by ${owner.name}`;
+      ownerBar.classList.remove('hidden');
+    }
+  } else {
+    ownerBar.classList.add('hidden');
+  }
+
+  // Price
+  document.getElementById('pc-price').textContent    = `₹${sq.price.toLocaleString()}`;
+  document.getElementById('pc-mortgage').textContent = `₹${Math.floor(sq.price / 2).toLocaleString()}`;
+
+  // Rent table
+  const rentTable = document.getElementById('pc-rent-table');
+  rentTable.innerHTML = '';
+  const b = G?.buildings?.[sqId];
+  const currentHouses = b?.hotel ? 5 : (b?.houses ?? 0);
+
+  if (sq.type === 'property') {
+    const rentLabels = ['Base Rent','1 House','2 Houses','3 Houses','4 Houses','Hotel'];
+    // Include rent[0] as base, then houses 1-4, then hotel (last element)
+    const allRents = [...sq.rent]; // [base, h1, h2, h3, h4] or [base, h1, h2, h3, h4, hotel]
+    // For our data: rent[0]=base, [1]=1H, [2]=2H, [3]=3H, [4]=hotel (5 values)
+    const tiers = [
+      { label: 'Base Rent',  val: sq.rent[0], tier: 0 },
+      { label: '1 🏠',       val: sq.rent[1], tier: 1 },
+      { label: '2 🏠🏠',     val: sq.rent[2], tier: 2 },
+      { label: '3 🏠🏠🏠',   val: sq.rent[3], tier: 3 },
+      { label: '4 🏠🏠🏠🏠', val: sq.rent[4] ?? sq.rent[3], tier: 4 },
+    ];
+    if (sq.rent.length >= 5) {
+      tiers.push({ label: 'Hotel 🏨', val: sq.rent[sq.rent.length - 1], tier: 5 });
+    }
+    tiers.forEach(t => {
+      if (t.val === undefined) return;
+      const isCurrent = (t.tier === currentHouses);
+      const row = document.createElement('div');
+      row.className = 'pc-rent-row' + (isCurrent ? ' highlight' : '');
+      row.innerHTML = `<span class="pc-rent-label">${t.label}</span>
+        <span class="pc-rent-val${isCurrent ? ' current' : ''}">₹${t.val.toLocaleString()}</span>`;
+      rentTable.appendChild(row);
+    });
+  } else if (sq.type === 'transport') {
+    const tLabels = ['1 Transport','2 Transports','3 Transports','4 Transports'];
+    sq.rent.forEach((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'pc-rent-row';
+      row.innerHTML = `<span class="pc-rent-label">${tLabels[i] || (i+1)+' owned'}</span>
+        <span class="pc-rent-val">₹${r.toLocaleString()}</span>`;
+      rentTable.appendChild(row);
+    });
+  } else if (sq.type === 'utility') {
+    const uLabels = ['1 Utility owned','2 Utilities owned'];
+    sq.rent.forEach((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'pc-rent-row';
+      row.innerHTML = `<span class="pc-rent-label">${uLabels[i]}</span>
+        <span class="pc-rent-val">₹${r.toLocaleString()}</span>`;
+      rentTable.appendChild(row);
+    });
+  }
+
+  // Buildings display
+  const bldDiv = document.getElementById('pc-buildings');
+  const bldIcons = document.getElementById('pc-bld-icons');
+  if (b && sq.type === 'property') {
+    bldDiv.classList.remove('hidden');
+    if (b.hotel) {
+      bldIcons.textContent = '🏨';
+    } else if (b.houses > 0) {
+      bldIcons.textContent = '🏠'.repeat(b.houses);
+    } else {
+      bldIcons.textContent = '—';
+    }
+  } else {
+    bldDiv.classList.add('hidden');
+  }
+
+  // Action buttons
+  const actions = document.getElementById('pc-actions');
+  actions.innerHTML = '';
+  if (opts.canBuy) {
+    const buyBtn = document.createElement('button');
+    buyBtn.className = 'ebtn primary';
+    buyBtn.innerHTML = `🛒 Buy ₹${sq.price.toLocaleString()}`;
+    buyBtn.onclick = () => { closePropCard(); socket.emit('buy-property', { sqId }); };
+    actions.appendChild(buyBtn);
+
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'ebtn secondary';
+    skipBtn.textContent = '⏭ Skip';
+    skipBtn.onclick = () => { closePropCard(); socket.emit('skip-buy'); };
+    actions.appendChild(skipBtn);
+  } else if (opts.cannotAfford) {
+    // Show skip only with a note
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:.68rem;color:#ff6b6b;text-align:center;margin-bottom:4px';
+    note.textContent = '💸 Not enough funds to buy';
+    actions.appendChild(note);
+    const skipBtn = document.createElement('button');
+    skipBtn.className = 'ebtn secondary full';
+    skipBtn.textContent = '⏭ Skip';
+    skipBtn.onclick = () => { closePropCard(); socket.emit('skip-buy'); };
+    actions.appendChild(skipBtn);
+  } else {
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'ebtn secondary full';
+    closeBtn.textContent = '✕ Close';
+    closeBtn.onclick = closePropCard;
+    actions.appendChild(closeBtn);
+  }
+
+  document.getElementById('prop-card-modal').classList.remove('hidden');
+}
+
+function closePropCard(e) {
+  if (e && e.target !== document.getElementById('prop-card-modal')) return;
+  document.getElementById('prop-card-modal').classList.add('hidden');
+}
+
 
 // ── Exit dialog ────────────────────────────────────────────
 function openExitDialog()  { document.getElementById('exit-overlay').classList.remove('hidden'); }
@@ -450,18 +636,20 @@ socket.on('dice-rolled', ({ v1, v2, steps, G: newG, result, winner }) => {
   switch (result.action) {
     case 'buy':
       if (isMe) {
-        showEvent('🏙️', `Buy ${sqName}?`,
-          `Price: ₹${result.price.toLocaleString()}\nYour balance: ₹${p.money.toLocaleString()}`,
-          [
-            { label: `🛒 Buy ₹${result.price.toLocaleString()}`, primary: true, fn: () => socket.emit('buy-property', { sqId: result.sqId }) },
-            { label: '⏭ Skip', primary: false, fn: () => socket.emit('skip-buy') }
-          ]);
+        // Show full property card with buy/skip buttons
+        showPropCard(result.sqId, { canBuy: true });
       } else {
         toast(`${p.name} is deciding on ${sqName}…`, 'info');
       }
       return; // No countdown for buy – waits for player decision
     case 'cannot_buy':
-      toast(`${p.name} can't afford ${sqName}.`, 'bad', 2500); break;
+      if (isMe) {
+        // Show prop card in view-only + skip mode so player sees what they can't afford
+        showPropCard(result.sqId, { cannotAfford: true });
+      } else {
+        toast(`${p.name} can't afford ${sqName}.`, 'bad', 2500);
+      }
+      break;
     case 'rent':
       toast(`${p.name} paid ₹${result.paid.toLocaleString()} rent to ${result.ownerName}.`, isMe ? 'bad' : 'info'); break;
     case 'tax':
@@ -553,6 +741,10 @@ function goToNewGame() {
 
 // ── KEYBOARD ─────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closePropCard();
+    closeEvt();
+  }
   if (e.key === 'Enter') {
     const activeId = document.querySelector('.screen.active')?.id;
     if (activeId === 'screen-enter') {
@@ -560,4 +752,17 @@ document.addEventListener('keydown', e => {
       if (code) joinRoom(); else createRoom();
     }
   }
+});
+
+// ── BOARD TILE CLICKS (view property card) ───────────────────
+// Attach after DOM is ready; re-attach is safe since we use data-sq
+document.querySelectorAll('.prop, .special').forEach(tile => {
+  tile.addEventListener('click', () => {
+    if (!G) return; // game not started
+    const sqId = parseInt(tile.dataset.sq, 10);
+    if (isNaN(sqId)) return;
+    const sq = SQUARES_FULL[sqId];
+    if (!sq || !sq.price) return; // not a purchasable square
+    showPropCard(sqId, { viewOnly: true });
+  });
 });

@@ -291,6 +291,49 @@
     </div>
   </div>
 
+  <!-- PROPERTY CARD MODAL -->
+  <div id="prop-card-modal" class="modal-overlay hidden" onclick="closePropCard(event)">
+    <div class="prop-card-box" onclick="event.stopPropagation()">
+      <!-- Color group header -->
+      <div id="pc-header" class="pc-header">
+        <div id="pc-type-badge" class="pc-type-badge">PROPERTY</div>
+        <button class="pc-close-btn" onclick="closePropCard()">✕</button>
+      </div>
+      <!-- Card body -->
+      <div class="pc-body">
+        <div id="pc-icon" class="pc-icon">🏙️</div>
+        <div id="pc-name" class="pc-name">City Name</div>
+        <div id="pc-owner-bar" class="pc-owner-bar hidden">
+          <span id="pc-owner-dot" class="pc-owner-dot"></span>
+          <span id="pc-owner-name">Owned by —</span>
+        </div>
+
+        <div class="pc-price-row">
+          <div class="pc-price-box">
+            <div class="pc-price-label">PRICE</div>
+            <div id="pc-price" class="pc-price-val">₹0</div>
+          </div>
+          <div id="pc-mortgage-box" class="pc-price-box">
+            <div class="pc-price-label">MORTGAGE</div>
+            <div id="pc-mortgage" class="pc-price-val" style="color:#aab">₹0</div>
+          </div>
+        </div>
+
+        <!-- Rent table -->
+        <div class="pc-rent-table" id="pc-rent-table"></div>
+
+        <!-- Buildings -->
+        <div id="pc-buildings" class="pc-buildings hidden">
+          <div class="pc-bld-label">BUILDINGS</div>
+          <div id="pc-bld-icons" class="pc-bld-icons"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div id="pc-actions" class="pc-actions eb-row"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- WINNER MODAL -->
   <div id="winner-modal" class="modal-overlay hidden">
     <div class="modal-box winner-box">
