@@ -426,8 +426,8 @@ html,body { height:100%; font-family:'Poppins',sans-serif; background:var(--bg);
   display:grid;
   grid-template-columns:90px repeat(8,1fr) 90px;
   grid-template-rows:90px repeat(8,1fr) 90px;
-  width:min(calc(100vw - var(--lw) - var(--rw) - 24px), calc(100vh - 60px),700px);
-  height:min(calc(100vw - var(--lw) - var(--rw) - 24px), calc(100vh - 60px),700px);
+  width:min(660px, calc(100vh - 74px));
+  height:min(660px, calc(100vh - 74px));
   background:#f7f5f0; border:3px solid #2a2a2a; border-radius:8px;
   overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.8);
 }
@@ -656,6 +656,12 @@ html,body { height:100%; font-family:'Poppins',sans-serif; background:var(--bg);
   /* Show FAB */
   .chat-fab { display:flex; }
 
+  /* Board adapts to narrower center */
+  .board {
+    width:min(560px, calc(100vh - 74px));
+    height:min(560px, calc(100vh - 74px));
+  }
+
   /* Slightly smaller left panel */
   .left-panel { padding:8px; gap:8px; }
 }
@@ -667,8 +673,6 @@ html,body { height:100%; font-family:'Poppins',sans-serif; background:var(--bg);
   html,body { overflow:auto; }
   .screen.active { overflow:auto; }
 
-  :root { --lw:100%; --rw:0px; }
-
   .game-body { flex-direction:column; overflow:visible; }
 
   .left-panel {
@@ -677,12 +681,14 @@ html,body { height:100%; font-family:'Poppins',sans-serif; background:var(--bg);
   }
 
   .board-scene {
-    min-height:52vw; max-height:60vw; flex-shrink:0; width:100%;
+    width:100%; height:auto; min-height:0; flex-shrink:0;
+    padding:8px 0;
   }
 
+  /* Board: fill almost full width on mobile */
   .board {
-    width:min(97vw,500px) !important;
-    height:min(97vw,500px) !important;
+    width:min(96vw, 480px) !important;
+    height:min(96vw, 480px) !important;
   }
 
   .top-bar { flex-wrap:wrap; height:auto; padding:8px 12px; gap:8px; min-height:50px; }

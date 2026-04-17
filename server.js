@@ -211,9 +211,25 @@ function processLanding(G, p) {
       return { action:'tax', name:sq.name, amount:sq.amount };
     case 'corner':
       if (sq.id === 0)  { p.money += 1500; return { action:'start_collect' }; }
-      if (sq.id === 9)  { p.money = Math.max(0, p.money - 300); return { action:'rest',  amount:300 }; }
-      if (sq.id === 19) { p.money = Math.max(0, p.money - 100); return { action:'club',  amount:100 }; }
-      if (sq.id === 28) { p.inJail = true; return { action:'jail' }; }
+      if (sq.id === 9)  { // REST HOUSE — pay ₹300 stay
+        const restFine = 300;
+        p.money = Math.max(0, p.money - restFine);
+        if (p.money <= 0) bankruptPlayer(p, G);
+        return { action:'rest', amount:restFine };
+      }
+      if (sq.id === 19) { // CLUB — pay ₹100 entry
+        const clubFine = 100;
+        p.money = Math.max(0, p.money - clubFine);
+        if (p.money <= 0) bankruptPlayer(p, G);
+        return { action:'club', amount:clubFine };
+      }
+      if (sq.id === 28) { // JAIL — pay ₹500 fine when landing directly
+        const jailFine = 500;
+        p.money = Math.max(0, p.money - jailFine);
+        p.inJail = true;
+        if (p.money <= 0) bankruptPlayer(p, G);
+        return { action:'jail', amount:jailFine };
+      }
       return { action:'none' };
     case 'chance': {
       const card = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];

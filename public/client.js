@@ -870,7 +870,7 @@ socket.on('dice-rolled', ({ v1, v2, steps, G: newG, result, winner }) => {
     case 'club':
       toast(`${av(p.avatar)} ${p.name} entered CLUB – paid ₹${result.amount}.`, isMe ? 'bad' : 'info'); break;
     case 'jail':
-      toast(`⛓️ ${av(p.avatar)} ${p.name} is in JAIL! Fine ₹500.`, 'bad'); break;
+      toast(`⛓️ ${av(p.avatar)} ${p.name} landed in JAIL! Paid ₹${result.amount || 500} fine.`, 'bad'); break;
     case 'card':
       toast(`${av(p.avatar)} ${p.name}: ${result.result}`, 'info', 3500); break;
     case 'build':
