@@ -376,21 +376,55 @@ io.on('connection', (socket) => {
     }
 
     io.to(socket.roomId).emit('dice-rolled', { v1, v2, steps, G, result, winner: winner?.name || null });
+
+    // Auto-advance turn after 2.5s for non-buy actions (buy waits for player decision)
+    if (!winner && result.action !== 'buy') {
+      const capturedRoomId = socket.roomId;
+      setTimeout(() => {
+        const r = rooms[capturedRoomId];
+        if (!r?.state) return;
+        advanceTurn(r.state);
+        r.state.turnDeadline = Date.now() + TURN_SECS * 1000;
+        io.to(capturedRoomId).emit('turn-changed', r.state);
+        startTimer(capturedRoomId);
+      }, 2500);
+    }
   });
 
   // ── BUY PROPERTY ──
   socket.on('buy-property', ({ sqId }) => {
-    const room = rooms[socket.roomId];
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
     if (!room?.state) return;
     const G = room.state, idx = room.socketMap[socket.id];
     if (idx !== G.cur) return socket.emit('error', { msg: 'Not your turn.' });
     const sq = SQUARES[sqId], p = G.players[G.cur];
     if (!sq || G.ownership[sqId] !== undefined || p.money < sq.price)
       return socket.emit('error', { msg: 'Cannot buy this property.' });
+    const buyerName = p.name;
     p.money -= sq.price;
     p.props.push(sqId);
-    G.ownership[sqId] = G.cur;
-    io.to(socket.roomId).emit('state-update', G);
+    G.ownership[sqId] = idx;
+    // Auto-advance turn
+    clearTimer(roomId);
+    advanceTurn(G);
+    G.turnDeadline = Date.now() + TURN_SECS * 1000;
+    io.to(roomId).emit('property-bought', { playerName: buyerName, sqId, G });
+    startTimer(roomId);
+  });
+
+  // ── SKIP BUY ──
+  socket.on('skip-buy', () => {
+    const roomId = socket.roomId;
+    const room = rooms[roomId];
+    if (!room?.state) return;
+    const G = room.state, idx = room.socketMap[socket.id];
+    if (idx !== G.cur) return;
+    clearTimer(roomId);
+    advanceTurn(G);
+    G.turnDeadline = Date.now() + TURN_SECS * 1000;
+    io.to(roomId).emit('turn-changed', G);
+    startTimer(roomId);
   });
 
   // ── BUILD HOUSE ──
@@ -425,15 +459,19 @@ io.on('connection', (socket) => {
     io.to(socket.roomId).emit('state-update', G);
   });
 
-  // ── END TURN ──
+  // ── END TURN (emergency host override only) ──
   socket.on('end-turn', () => {
     const room = rooms[socket.roomId];
     if (!room?.state) return;
     const G = room.state, idx = room.socketMap[socket.id];
-    if (idx !== G.cur) return socket.emit('error', { msg: 'Not your turn.' });
+    // Allow current player OR host to force-advance
+    const isCurrentPlayer = idx === G.cur;
+    const isRoomHost = room.hostSocketId === socket.id;
+    if (!isCurrentPlayer && !isRoomHost) return;
     clearTimer(socket.roomId);
     advanceTurn(G);
-    io.to(socket.roomId).emit('state-update', G);
+    G.turnDeadline = Date.now() + TURN_SECS * 1000;
+    io.to(socket.roomId).emit('turn-changed', G);
     startTimer(socket.roomId);
   });
 

@@ -1,9 +1,9 @@
 // ============================================================
-// BUSINESS INDIA — CLIENT  v3.0
+// BUSINESS INDIA — CLIENT v4.0
+// Auto-advance turns, no End Turn button
 // ============================================================
 'use strict';
 
-// ── Socket setup (auto-reconnect) ──────────────────────────
 const socket = io({
   reconnection: true,
   reconnectionAttempts: Infinity,
@@ -14,49 +14,81 @@ const socket = io({
 });
 
 // ── State ──────────────────────────────────────────────────
-let mySession  = null;   // sessionId from server
-let myRoomId   = null;
-let myIdx      = null;   // my player index in G.players
-let isHost     = false;
-let isReady    = false;
-let G          = null;   // full game state from server
-let timerIv    = null;
+let mySession = null, myRoomId = null, myIdx = null, isHost = false, isReady = false;
+let G = null, timerIv = null, countdownIv = null;
 
 const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
-
 const SQUARES = [
-  {id:0,  name:'START'},     {id:1,  name:'Goa'},         {id:2,  name:'Motor Boat'},
-  {id:3,  name:'Cochin'},    {id:4,  name:'Mysore'},       {id:5,  name:'Wealth Tax'},
-  {id:6,  name:'Bengaluru'}, {id:7,  name:'Community Chest'},{id:8, name:'Chennai'},
-  {id:9,  name:'REST HOUSE'},{id:10, name:'Hyderabad'},    {id:11, name:'Kolkata'},
-  {id:12, name:'Air India'}, {id:13, name:'Darjeeling'},   {id:14, name:'Patna'},
-  {id:15, name:'Kanpur'},    {id:16, name:'Chance'},       {id:17, name:'Agra'},
-  {id:18, name:'Srinagar'},  {id:19, name:'CLUB'},         {id:20, name:'Amritsar'},
-  {id:21, name:'Shimla'},    {id:22, name:'BEST'},         {id:23, name:'Electric Co.'},
-  {id:24, name:'Chandigarh'},{id:25, name:'Community Chest'},{id:26,name:'Lucknow'},
-  {id:27, name:'Delhi'},     {id:28, name:'JAIL'},         {id:29, name:'Jaipur'},
-  {id:30, name:'Chance'},    {id:31, name:'Indore'},       {id:32, name:'Income Tax'},
-  {id:33, name:'Ahmedabad'}, {id:34, name:'Railways'},     {id:35, name:'Water Works'},
-  {id:36, name:'Mumbai'}
+  {id:0,name:'START'},{id:1,name:'Goa'},{id:2,name:'Motor Boat'},
+  {id:3,name:'Cochin'},{id:4,name:'Mysore'},{id:5,name:'Wealth Tax'},
+  {id:6,name:'Bengaluru'},{id:7,name:'Community Chest'},{id:8,name:'Chennai'},
+  {id:9,name:'REST HOUSE'},{id:10,name:'Hyderabad'},{id:11,name:'Kolkata'},
+  {id:12,name:'Air India'},{id:13,name:'Darjeeling'},{id:14,name:'Patna'},
+  {id:15,name:'Kanpur'},{id:16,name:'Chance'},{id:17,name:'Agra'},
+  {id:18,name:'Srinagar'},{id:19,name:'CLUB'},{id:20,name:'Amritsar'},
+  {id:21,name:'Shimla'},{id:22,name:'BEST'},{id:23,name:'Electric Co.'},
+  {id:24,name:'Chandigarh'},{id:25,name:'Community Chest'},{id:26,name:'Lucknow'},
+  {id:27,name:'Delhi'},{id:28,name:'JAIL'},{id:29,name:'Jaipur'},
+  {id:30,name:'Chance'},{id:31,name:'Indore'},{id:32,name:'Income Tax'},
+  {id:33,name:'Ahmedabad'},{id:34,name:'Railways'},{id:35,name:'Water Works'},
+  {id:36,name:'Mumbai'}
 ];
 
-// ── Screen helpers ─────────────────────────────────────────
+// ── Screens ────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
+// ── Toast notifications ────────────────────────────────────
+function toast(msg, type = 'info', duration = 3200) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  const container = document.getElementById('toast-container');
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .4s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 420);
+  }, duration);
+}
+
+// ── Countdown pill ─────────────────────────────────────────
+function showCountdown(seconds, label = 'Next turn in') {
+  clearInterval(countdownIv);
+  const overlay = document.getElementById('countdown-overlay');
+  const num     = document.getElementById('countdown-num');
+  const pill    = document.getElementById('countdown-pill');
+  pill.innerHTML = `${label} <span id="countdown-num">${seconds}</span>…`;
+  overlay.classList.remove('hidden');
+  let rem = seconds;
+  countdownIv = setInterval(() => {
+    rem--;
+    const n = document.getElementById('countdown-num');
+    if (n) n.textContent = rem;
+    if (rem <= 0) {
+      clearInterval(countdownIv);
+      overlay.classList.add('hidden');
+    }
+  }, 1000);
+}
+function hideCountdown() {
+  clearInterval(countdownIv);
+  document.getElementById('countdown-overlay').classList.add('hidden');
+}
+
 // ── Enter screen ───────────────────────────────────────────
 function createRoom() {
   const name = document.getElementById('inp-name').value.trim();
-  if (!name) return setErr('enter-err', 'Enter your name first.');
+  if (!name) return setErr('enter-err', '⚠ Enter your name first.');
   socket.emit('create-room', { name });
 }
 function joinRoom() {
   const name = document.getElementById('inp-name').value.trim();
   const code = document.getElementById('inp-room').value.trim().toUpperCase();
-  if (!name) return setErr('enter-err', 'Enter your name first.');
-  if (!code) return setErr('enter-err', 'Enter a Room Code.');
+  if (!name) return setErr('enter-err', '⚠ Enter your name first.');
+  if (!code) return setErr('enter-err', '⚠ Enter a Room Code.');
   socket.emit('join-room', { roomId: code, name });
 }
 function setErr(id, msg) { document.getElementById(id).textContent = msg; }
@@ -64,45 +96,45 @@ function setErr(id, msg) { document.getElementById(id).textContent = msg; }
 // ── Lobby ──────────────────────────────────────────────────
 function copyRoomCode() {
   navigator.clipboard.writeText(myRoomId).then(() => {
+    toast('Room code copied!', 'info', 1800);
     const btn = document.querySelector('.copy-btn');
-    btn.textContent = '✅'; setTimeout(() => { btn.textContent = '📋'; }, 1500);
+    btn.textContent = '✅'; setTimeout(() => btn.textContent = '📋', 1600);
   });
 }
 function toggleReady() {
   isReady = !isReady;
   socket.emit('player-ready', { ready: isReady });
-  const btn = document.getElementById('btn-ready');
-  btn.textContent = isReady ? '❌ Unready' : '✅ Ready';
+  document.getElementById('btn-ready').textContent = isReady ? '❌ Unready' : '✅ Mark Ready';
 }
 function startGame() { socket.emit('start-game'); }
 function leaveLobby() {
   socket.emit('player-exit');
-  myRoomId = null; mySession = null; isHost = false; isReady = false;
   localStorage.removeItem('bi_room'); localStorage.removeItem('bi_session');
+  myRoomId = null; mySession = null; isHost = false; isReady = false;
   showScreen('screen-enter');
 }
 function renderLobby(players) {
   const ul = document.getElementById('lobby-players');
   ul.innerHTML = '';
-  players.forEach((p, i) => {
+  players.forEach(p => {
     const row = document.createElement('div');
     row.className = 'player-row';
-    let badge = '';
-    if (p.isHost) badge += `<span class="player-row-badge badge-host">HOST</span>`;
-    if (p.ready)  badge += `<span class="player-row-badge badge-ready">READY</span>`;
-    else          badge += `<span class="player-row-badge badge-waiting">WAITING</span>`;
-    row.innerHTML = `<div class="player-dot" style="background:${p.color}"></div>
-      <span class="player-row-name">${p.name}</span>${badge}`;
+    let badges = '';
+    if (p.isHost) badges += `<span class="badge badge-host">HOST</span>`;
+    if (p.ready)  badges += `<span class="badge badge-ready">READY</span>`;
+    else          badges += `<span class="badge badge-wait">WAITING</span>`;
+    row.innerHTML = `<div class="player-dot" style="background:${p.color};color:${p.color}"></div>
+      <span class="player-row-name">${p.name}</span>${badges}`;
     ul.appendChild(row);
   });
-  const startBtn = document.getElementById('btn-start');
   if (isHost) {
     const allReady = players.filter(p => !p.isHost).every(p => p.ready);
+    const startBtn = document.getElementById('btn-start');
     startBtn.classList.toggle('hidden', players.length < 2 || !allReady);
   }
 }
 
-// ── Game render helpers ────────────────────────────────────
+// ── Board render ───────────────────────────────────────────
 function renderTokens(state) {
   document.querySelectorAll('.tok-area').forEach(el => el.innerHTML = '');
   state.players.forEach((p, i) => {
@@ -118,9 +150,7 @@ function renderTokens(state) {
 }
 
 function renderOwnership(state) {
-  // Clear all owner bars
   document.querySelectorAll('.owner-bar').forEach(el => el.style.background = 'transparent');
-  // Apply ownership colors
   Object.entries(state.ownership).forEach(([sqId, ownerId]) => {
     if (ownerId === undefined || ownerId === null) return;
     const owner = state.players[ownerId];
@@ -139,21 +169,19 @@ function renderPlayers(state) {
     const isMe  = i === myIdx;
     const card  = document.createElement('div');
     card.className = 'pcard' + (isCur ? ' active' : '') + (p.bust ? ' bust' : '');
-    // Property dots
     const dots = p.props.map(sid => {
-      const sq2 = SQUARES[sid];
-      const color = state.players[state.ownership[sid]]?.color || '#888';
-      return `<div class="prop-dot" style="background:${color}" title="${sq2?.name || ''}"></div>`;
+      const ownerColor = state.players[state.ownership[sid]]?.color || '#555';
+      return `<div class="pdot" style="background:${ownerColor}"></div>`;
     }).join('');
     card.innerHTML = `
       <div class="pcr">
-        <div class="pcdot" style="background:${p.color}"></div>
-        <span class="pcname">${p.name}${isMe ? ' (You)' : ''}</span>
+        <div class="pcdot" style="background:${p.color};color:${p.color}"></div>
+        <span class="pcname">${p.name}</span>${isMe ? '<span class="you-badge">You</span>' : ''}
       </div>
       <div class="pcmoney">₹${p.money.toLocaleString()}</div>
       <div class="pcpos">📍 ${sq.name}</div>
-      <div class="pcstatus ${p.bust ? 'bust-txt' : 'ok'}">${p.bust ? '💀 Bankrupt' : isCur ? '🎯 Active Turn' : '⏳ Waiting'}</div>
-      ${dots ? `<div class="pcprops">${dots}</div>` : ''}`;
+      <div class="pcst ${p.bust ? 'bust-txt' : 'ok'}">${p.bust ? '💀 Bankrupt' : isCur ? '🎯 Active' : '⏳ Waiting'}</div>
+      ${dots ? `<div class="pcpropdots">${dots}</div>` : ''}`;
     panel.appendChild(card);
   });
 }
@@ -163,17 +191,17 @@ function renderMyProps(state) {
   el.innerHTML = '';
   if (myIdx === null) return;
   const me = state.players[myIdx];
-  if (!me || me.bust) { el.innerHTML = '<div style="font-size:.55rem;color:#666">None yet</div>'; return; }
-  if (!me.props.length) { el.innerHTML = '<div style="font-size:.55rem;color:#666">None yet</div>'; return; }
+  if (!me || !me.props.length) {
+    el.innerHTML = '<div class="empty-hint">None yet</div>'; return;
+  }
   me.props.forEach(sid => {
     const sq = SQUARES[sid];
     const b  = state.buildings?.[sid];
-    const bldg = b ? (b.hotel ? '🏨' : '🏠'.repeat(b.houses)) : '';
-    const d  = document.createElement('div');
-    d.className = 'myprop-item';
-    d.innerHTML = `<div class="myprop-name"><div class="myprop-dot" style="background:${me.color}"></div>
-      <span>${sq?.name}</span></div>
-      ${bldg ? `<span style="font-size:.48rem">${bldg}</span>` : ''}`;
+    const bldg = b ? (b.hotel ? ' 🏨' : ' 🏠'.repeat(b.houses)) : '';
+    const d = document.createElement('div');
+    d.className = 'mpi';
+    d.innerHTML = `<div class="mpidot" style="background:${me.color}"></div>
+      <span>${sq?.name}${bldg}</span>`;
     el.appendChild(d);
   });
 }
@@ -181,11 +209,13 @@ function renderMyProps(state) {
 function renderCardLog(state) {
   const el = document.getElementById('card-log');
   el.innerHTML = '';
-  if (!state.cardLog?.length) { el.innerHTML = '<div style="font-size:.55rem;color:#666">No cards yet</div>'; return; }
-  state.cardLog.slice(0, 5).forEach(entry => {
+  if (!state.cardLog?.length) {
+    el.innerHTML = '<div class="empty-hint">No cards drawn</div>'; return;
+  }
+  state.cardLog.slice(0, 6).forEach(e => {
     const d = document.createElement('div');
-    d.className = 'log-entry';
-    d.innerHTML = `<span class="log-name">${entry.player}:</span> ${entry.result || entry.card}`;
+    d.className = 'log-item';
+    d.innerHTML = `<span class="log-pname">${e.player}:</span> ${e.result || e.card}`;
     el.appendChild(d);
   });
 }
@@ -196,26 +226,28 @@ function renderAll(state) {
   renderPlayers(state);
   renderMyProps(state);
   renderCardLog(state);
-  updateControls(state);
-  updateTurnUI(state);
+  updateRollBtn(state);
+  updateTurnBanner(state);
 }
 
-function updateControls(state) {
-  const isMyTurn = myIdx === state.cur;
+function updateRollBtn(state) {
   const rb = document.getElementById('roll-btn');
-  const eb = document.getElementById('end-btn');
-  rb.disabled = !isMyTurn || state.rolled;
-  eb.disabled = !isMyTurn || !state.rolled;
+  rb.disabled = !(myIdx === state.cur && !state.rolled);
 }
 
-function updateTurnUI(state) {
-  const cur = state.players[state.cur];
-  const ti  = document.getElementById('turn-indicator');
-  const isMe = state.cur === myIdx;
-  ti.style.color = cur?.color || '#fff';
-  ti.textContent = isMe ? '🎯 Your Turn!' : `${cur?.name || '?'}'s Turn`;
-
-  // Timer bar
+function updateTurnBanner(state) {
+  const cur    = state.players[state.cur];
+  const banner = document.getElementById('turn-banner');
+  const dot    = document.getElementById('turn-dot');
+  const text   = document.getElementById('turn-text');
+  const isMe   = state.cur === myIdx;
+  dot.style.background = cur?.color || '#fff';
+  text.textContent = isMe ? '🎯 Your Turn — Roll the Dice!' : `${cur?.name}'s Turn`;
+  banner.classList.toggle('my-turn', isMe);
+  // Update room badge
+  const rb = document.getElementById('room-badge');
+  if (rb && myRoomId) rb.textContent = myRoomId;
+  // Timer
   if (state.turnDeadline) startTimerBar(state.turnDeadline);
 }
 
@@ -224,24 +256,17 @@ function startTimerBar(deadline) {
   const TOTAL = 90;
   function tick() {
     const rem = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
-    document.getElementById('timer-bar-label').textContent = rem + 's';
-    const pct = (rem / TOTAL) * 100;
-    const fill = document.getElementById('timer-bar');
-    fill.style.width = pct + '%';
-    fill.style.background = rem < 20 ? '#F44336' : rem < 40 ? '#FF9800' : '#FFD600';
+    document.getElementById('timer-sec').textContent = rem + 's';
+    const fill = document.getElementById('timer-fill');
+    fill.style.width = ((rem / TOTAL) * 100) + '%';
+    fill.style.background = rem < 20 ? '#EF5350' : rem < 40 ? '#FF9800' : '#FFD600';
     if (rem <= 0) clearInterval(timerIv);
   }
-  tick();
-  timerIv = setInterval(tick, 1000);
+  tick(); timerIv = setInterval(tick, 1000);
 }
 
-function setMsg(text) {
-  document.getElementById('status-msg').textContent = text;
-}
-
-// ── Dice UI ────────────────────────────────────────────────
+// ── Dice ───────────────────────────────────────────────────
 function rollDice() {
-  if (!G) return;
   const rb = document.getElementById('roll-btn');
   if (rb.disabled) return;
   rb.disabled = true;
@@ -255,13 +280,10 @@ function rollDice() {
     if (++t >= 10) { clearInterval(iv); socket.emit('roll-dice'); }
   }, 55);
 }
-function endTurn() {
-  if (document.getElementById('end-btn').disabled) return;
-  socket.emit('end-turn');
-}
 
 // ── Event modal ────────────────────────────────────────────
-function showEvent(title, body, buttons) {
+function showEvent(icon, title, body, buttons) {
+  document.getElementById('evt-icon').textContent  = icon;
   document.getElementById('evt-title').textContent = title;
   document.getElementById('evt-body').textContent  = body;
   const row = document.getElementById('evt-btns');
@@ -270,10 +292,7 @@ function showEvent(title, body, buttons) {
     const btn = document.createElement('button');
     btn.className = 'ebtn ' + (b.primary ? 'primary' : 'secondary');
     btn.textContent = b.label;
-    btn.onclick = () => {
-      document.getElementById('evt-modal').classList.add('hidden');
-      if (b.fn) b.fn();
-    };
+    btn.onclick = () => { closeEvt(); if (b.fn) b.fn(); };
     row.appendChild(btn);
   });
   document.getElementById('evt-modal').classList.remove('hidden');
@@ -286,14 +305,13 @@ function closeExitDialog() { document.getElementById('exit-overlay').classList.a
 function confirmExit() {
   closeExitDialog();
   socket.emit('player-exit');
-  localStorage.removeItem('bi_room');
-  localStorage.removeItem('bi_session');
+  localStorage.removeItem('bi_room'); localStorage.removeItem('bi_session');
   myRoomId = null; mySession = null; myIdx = null; G = null;
+  hideCountdown();
   showScreen('screen-enter');
-  setMsg('');
 }
 
-// ── Reconnection ───────────────────────────────────────────
+// ── Reconnect ──────────────────────────────────────────────
 function tryReconnect() {
   const roomId    = localStorage.getItem('bi_room');
   const sessionId = localStorage.getItem('bi_session');
@@ -303,67 +321,75 @@ function tryReconnect() {
   }
 }
 
-// ── Socket events ──────────────────────────────────────────
+// ── Dice result display ────────────────────────────────────
+function showRollResult(v1, v2) {
+  const el = document.getElementById('roll-result');
+  el.textContent = `🎲 ${v1} + ${v2} = ${v1+v2}`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SOCKET EVENTS
+// ═══════════════════════════════════════════════════════════
 
 socket.on('connect', () => {
   document.getElementById('reconnect-banner').classList.add('hidden');
   if (!myRoomId) tryReconnect();
 });
-
 socket.on('disconnect', () => {
   document.getElementById('reconnect-banner').classList.remove('hidden');
 });
-
 socket.on('reconnect', () => {
   document.getElementById('reconnect-banner').classList.add('hidden');
-  if (myRoomId && mySession) {
-    socket.emit('reconnect-room', { roomId: myRoomId, sessionId: mySession });
-  }
+  if (myRoomId && mySession) socket.emit('reconnect-room', { roomId: myRoomId, sessionId: mySession });
 });
 
 socket.on('error', ({ msg }) => {
-  const activeScreen = document.querySelector('.screen.active')?.id;
-  if (activeScreen === 'screen-enter') setErr('enter-err', msg);
-  else if (activeScreen === 'screen-lobby') setErr('lobby-err', msg);
-  else setMsg('❗ ' + msg);
+  const active = document.querySelector('.screen.active')?.id;
+  if (active === 'screen-enter') setErr('enter-err', '⚠ ' + msg);
+  else if (active === 'screen-lobby') setErr('lobby-err', '⚠ ' + msg);
+  else toast('⚠ ' + msg, 'bad');
 });
 
-// ── Room created ──
+// Lobby
 socket.on('room-created', ({ roomId, sessionId }) => {
-  myRoomId = roomId; mySession = sessionId; isHost = true;
-  localStorage.setItem('bi_room', roomId);
-  localStorage.setItem('bi_session', sessionId);
+  myRoomId = roomId; mySession = sessionId; isHost = true; myIdx = 0;
+  localStorage.setItem('bi_room', roomId); localStorage.setItem('bi_session', sessionId);
   document.getElementById('lobby-roomcode').textContent = roomId;
   document.getElementById('btn-start').classList.remove('hidden');
   document.getElementById('btn-ready').classList.add('hidden');
   showScreen('screen-lobby');
 });
-
-// ── Room joined ──
 socket.on('room-joined', ({ roomId, sessionId }) => {
   myRoomId = roomId; mySession = sessionId; isHost = false;
-  localStorage.setItem('bi_room', roomId);
-  localStorage.setItem('bi_session', sessionId);
+  localStorage.setItem('bi_room', roomId); localStorage.setItem('bi_session', sessionId);
   document.getElementById('lobby-roomcode').textContent = roomId;
   document.getElementById('btn-start').classList.add('hidden');
   document.getElementById('btn-ready').classList.remove('hidden');
   showScreen('screen-lobby');
+  socket.emit('get-my-idx');
+});
+socket.on('my-idx', ({ idx }) => { myIdx = idx; });
+socket.on('lobby-update', renderLobby);
+socket.on('host-assigned', () => {
+  isHost = true;
+  document.getElementById('btn-start').classList.remove('hidden');
+  document.getElementById('btn-ready').classList.add('hidden');
+  toast('👑 You are now the host!', 'info');
 });
 
-// ── Reconnected ──
+// Reconnected mid-game
 socket.on('reconnected', ({ roomId, playerIdx, state, lobbyPlayers, isHost: iH, sessionId }) => {
   document.getElementById('reconnect-banner').classList.add('hidden');
-  myRoomId = roomId; myIdx = playerIdx; isHost = iH;
-  mySession = sessionId;
-  localStorage.setItem('bi_room', roomId);
-  localStorage.setItem('bi_session', sessionId);
-
+  myRoomId = roomId; myIdx = playerIdx; isHost = iH; mySession = sessionId;
+  localStorage.setItem('bi_room', roomId); localStorage.setItem('bi_session', sessionId);
   if (state) {
     G = state;
-    document.getElementById('lobby-roomcode').textContent = roomId;
+    document.getElementById('room-badge').textContent = roomId;
     showScreen('screen-game');
     renderAll(G);
-    setMsg('Reconnected! Welcome back.');
+    toast('✅ Reconnected!', 'good');
   } else {
     document.getElementById('lobby-roomcode').textContent = roomId;
     renderLobby(lobbyPlayers);
@@ -371,201 +397,139 @@ socket.on('reconnected', ({ roomId, playerIdx, state, lobbyPlayers, isHost: iH, 
   }
 });
 
-// ── Lobby updates ──
-socket.on('lobby-update', (players) => {
-  // Find my index from players list
-  const stored = localStorage.getItem('bi_session');
-  renderLobby(players);
-});
-
-socket.on('host-assigned', () => {
-  isHost = true;
-  const btn = document.getElementById('btn-start');
-  btn.classList.remove('hidden');
-  document.getElementById('btn-ready').classList.add('hidden');
-  setMsg('You are now the host!');
-});
-
-// ── Game started ──
+// Game started
 socket.on('game-started', (state) => {
   G = state;
-  // Determine myIdx: find my session playerIdx from localStorage
-  //  (server doesn't re-send it here; we already stored it at room-joined/room-created)
-  //  But we may not have set myIdx yet for the normal join flow.
-  //  We'll detect by matching socket connection order – server sends players in join order.
-  //  Fallback: keep existing myIdx if already set; otherwise detect via name.
+  if (myIdx === null) myIdx = 0; // fallback
   showScreen('screen-game');
+  document.getElementById('room-badge').textContent = myRoomId;
   renderAll(G);
-  setMsg('🎲 Game started! Player 1 goes first.');
+  toast('🎲 Game started! Player 1 goes first.', 'info');
 });
 
-// ── Dice rolled ──
+// ── DICE ROLLED ─────────────────────────────────────────────
 socket.on('dice-rolled', ({ v1, v2, steps, G: newG, result, winner }) => {
   G = newG;
-  document.getElementById('d1').textContent = FACES[v1 - 1];
-  document.getElementById('d2').textContent = FACES[v2 - 1];
-  document.getElementById('d1').classList.remove('spinning');
-  document.getElementById('d2').classList.remove('spinning');
+  const d1 = document.getElementById('d1');
+  const d2 = document.getElementById('d2');
+  d1.textContent = FACES[v1-1]; d2.textContent = FACES[v2-1];
+  d1.classList.remove('spinning'); d2.classList.remove('spinning');
+  showRollResult(v1, v2);
 
-  const p = G.players[G.cur];
-  let msgText = `${p.name} rolled ${v1}+${v2}=${steps} → ${SQUARES[p.pos]?.name}`;
-
+  const p = G.players[G.cur]; // current player (before auto-advance)
   renderAll(G);
 
   if (winner) {
+    hideCountdown();
     document.getElementById('winner-name').textContent = `🏆 ${winner} Wins!`;
     document.getElementById('winner-modal').classList.remove('hidden');
     return;
   }
 
-  // Handle result modals only for current player (everyone sees the state update)
+  const sqName = SQUARES[p.pos]?.name || '?';
+  const isMe   = G.cur === myIdx;
+
   switch (result.action) {
     case 'buy':
-      if (myIdx === G.cur) {
-        showEvent(`🏙️ Buy Property?`, `${SQUARES[result.sqId]?.name} costs ₹${result.price.toLocaleString()}. You have ₹${p.money.toLocaleString()}.`, [
-          { label: `Buy ₹${result.price.toLocaleString()}`, primary: true, fn: () => socket.emit('buy-property', { sqId: result.sqId }) },
-          { label: 'Skip', primary: false, fn: () => socket.emit('end-turn') }
-        ]);
+      if (isMe) {
+        showEvent('🏙️', `Buy ${sqName}?`,
+          `Price: ₹${result.price.toLocaleString()}\nYour balance: ₹${p.money.toLocaleString()}`,
+          [
+            { label: `🛒 Buy ₹${result.price.toLocaleString()}`, primary: true, fn: () => socket.emit('buy-property', { sqId: result.sqId }) },
+            { label: '⏭ Skip', primary: false, fn: () => socket.emit('skip-buy') }
+          ]);
       } else {
-        setMsg(`${p.name} is deciding whether to buy ${SQUARES[result.sqId]?.name}…`);
+        toast(`${p.name} is deciding on ${sqName}…`, 'info');
       }
-      break;
+      return; // No countdown for buy – waits for player decision
     case 'cannot_buy':
-      setMsg(`${p.name} can't afford ${SQUARES[result.sqId]?.name}.`); break;
+      toast(`${p.name} can't afford ${sqName}.`, 'bad', 2500); break;
     case 'rent':
-      setMsg(`${p.name} paid ₹${result.paid.toLocaleString()} rent to ${result.ownerName}.`);
-      if (myIdx === G.cur) showEvent('🏠 Rent Paid!', `You paid ₹${result.paid.toLocaleString()} rent to ${result.ownerName}.`, [
-        { label: 'OK', primary: true, fn: () => socket.emit('end-turn') }
-      ]);
-      break;
+      toast(`${p.name} paid ₹${result.paid.toLocaleString()} rent to ${result.ownerName}.`, isMe ? 'bad' : 'info'); break;
     case 'tax':
-      setMsg(`${p.name} paid ₹${result.amount.toLocaleString()} as ${result.name}.`);
-      if (myIdx === G.cur) showEvent(`💸 ${result.name}`, `You paid ₹${result.amount.toLocaleString()}.`, [
-        { label: 'OK', primary: true, fn: () => socket.emit('end-turn') }
-      ]);
-      break;
+      toast(`${p.name} paid ₹${result.amount.toLocaleString()} tax (${result.name}).`, isMe ? 'bad' : 'info'); break;
     case 'start_collect':
-      setMsg(`${p.name} landed on START! +₹1,500`);
-      if (myIdx === G.cur) showEvent('🟢 START!', 'You collect ₹1,500!', [
-        { label: 'Collect ₹1,500', primary: true, fn: () => socket.emit('end-turn') }
-      ]);
-      break;
+      toast(`${p.name} landed on START! +₹1,500 🟢`, isMe ? 'good' : 'info'); break;
     case 'rest':
-      setMsg(`${p.name} is at REST HOUSE – paid ₹${result.amount}.`);
-      if (myIdx === G.cur) showEvent('🏠 REST HOUSE', `Entry fee: ₹${result.amount} paid.`, [
-        { label: 'OK', primary: true, fn: () => socket.emit('end-turn') }
-      ]);
-      break;
+      toast(`${p.name} at REST HOUSE – paid ₹${result.amount}. 🏠`, isMe ? 'bad' : 'info'); break;
     case 'club':
-      setMsg(`${p.name} entered CLUB – paid ₹${result.amount}.`);
-      if (myIdx === G.cur) showEvent('🎰 CLUB', `Admission: ₹${result.amount} paid.`, [
-        { label: 'OK', primary: true, fn: () => socket.emit('end-turn') }
-      ]);
-      break;
+      toast(`${p.name} entered CLUB – paid ₹${result.amount}. 🎰`, isMe ? 'bad' : 'info'); break;
     case 'jail':
-      setMsg(`${p.name} is in JAIL!`);
-      if (myIdx === G.cur) showEvent('⛓️ JAIL!', 'You are sent to Jail! Pay ₹500 fine. Turn ends.', [
-        { label: 'OK', primary: true, fn: () => socket.emit('end-turn') }
-      ]);
-      break;
+      toast(`⛓️ ${p.name} is in JAIL! Fine ₹500.`, 'bad'); break;
     case 'card':
-      setMsg(`${p.name} drew ${result.deck.toUpperCase()} card: ${result.result}`);
-      if (myIdx === G.cur) showEvent(`${result.deck === 'chance' ? '🎴 CHANCE' : '📦 COMMUNITY CHEST'}`, result.result, [
-        { label: 'OK', primary: true, fn: () => socket.emit('end-turn') }
-      ]);
-      break;
+      toast(`${p.name} drew ${result.deck.toUpperCase()}: ${result.result}`, 'info', 3500); break;
     case 'build':
-      setMsg(`${p.name} is on their own property.`);
-      break;
+      toast(`${p.name} is on their own property.`, 'info', 2000); break;
     default:
-      setMsg(msgText);
+      toast(`${p.name} moved to ${sqName}.`, 'info', 2000);
   }
+
+  // Show countdown (server will auto-advance in 2.5s)
+  showCountdown(2, 'Next turn in');
 });
 
-// ── State update ──
+// ── TURN CHANGED (auto-advance from server) ─────────────────
+socket.on('turn-changed', (state) => {
+  G = state;
+  hideCountdown();
+  renderAll(G);
+  const cur  = G.players[G.cur];
+  const isMe = G.cur === myIdx;
+  toast(isMe ? `🎯 Your turn, ${cur.name}! Roll the dice!` : `${cur.name}'s turn.`, isMe ? 'good' : 'info', 2500);
+});
+
+// ── STATE UPDATE (generic sync) ──────────────────────────────
 socket.on('state-update', (state) => {
   G = state;
   renderAll(G);
-  setMsg("State synced. Roll dice or wait for your turn.");
 });
 
-// ── Buy confirmation broadcast ──
-socket.on('property-bought', ({ playerName, sqId }) => {
-  setMsg(`${playerName} bought ${SQUARES[sqId]?.name}!`);
-  if (G) renderOwnership(G);
+// ── PROPERTY BOUGHT ──────────────────────────────────────────
+socket.on('property-bought', ({ playerName, sqId, G: newG }) => {
+  G = newG;
+  hideCountdown();
+  renderAll(G);
+  toast(`🏙️ ${playerName} bought ${SQUARES[sqId]?.name}!`, 'good');
+  // Show whose turn it is next
+  const cur = G.players[G.cur];
+  const isMe = G.cur === myIdx;
+  setTimeout(() => {
+    toast(isMe ? `🎯 Your turn! Roll the dice.` : `${cur.name}'s turn.`, isMe ? 'good' : 'info', 2200);
+  }, 500);
 });
 
-// ── Player left ──
+// ── PLAYER LEFT / RECONNECTED ────────────────────────────────
 socket.on('player-left', ({ name, reconnectable }) => {
-  setMsg(`${name} has ${reconnectable ? 'disconnected (can reconnect)' : 'left the game'}.`);
+  toast(`${name} has ${reconnectable ? 'disconnected' : 'left the game'}.`, 'bad', 4000);
   if (G) renderPlayers(G);
 });
-
 socket.on('player-reconnected', ({ name }) => {
-  setMsg(`${name} reconnected!`);
+  toast(`${name} reconnected!`, 'good');
 });
 
-// ── Game over ──
+// ── GAME OVER ────────────────────────────────────────────────
 socket.on('game-over', ({ winner }) => {
+  hideCountdown();
   document.getElementById('winner-name').textContent = `🏆 ${winner} Wins!`;
   document.getElementById('winner-modal').classList.remove('hidden');
 });
 
-// ── Game restarted ──
+// ── GAME RESTARTED ───────────────────────────────────────────
 socket.on('game-restarted', (state) => {
   G = state;
+  hideCountdown();
   document.getElementById('winner-modal').classList.add('hidden');
   renderAll(G);
-  setMsg('🎲 New game started!');
+  toast('🎲 New game started!', 'info');
 });
 
-// ── Set myIdx on room-created / room-joined ──
-// We assign myIdx based on position in room:
-// host = 0, subsequent joins = 1, 2, 3...
-// We track this via the lobby-update event (find by matching our session)
-let _myJoinOrder = null;
-
-socket.on('room-created', () => { _myJoinOrder = 0; myIdx = 0; });
-socket.on('room-joined',  ({ roomId }) => {
-  // idx will be assigned when game starts via lobby size - but we don't know count yet
-  // We'll set myIdx once game-started fires via lobby watcher
-});
-
-// Track lobby to know our index
-let _lastLobbySize = 0;
-socket.on('lobby-update', (players) => {
-  _lastLobbySize = players.length;
-  // If we freshly joined (not host), our index is the last one we have a session for
-  if (!isHost && myIdx === null) {
-    // Find matching player – not reliable without server confirmation; handled by reconnect
-  }
-});
-
-// When game starts, if myIdx is still null, guess from socket join order
-socket.on('game-started', (state) => {
-  if (myIdx === null) {
-    // Find the player that matches our stored room/session
-    // As a fallback, assume we are the last person who joined
-    myIdx = _lastLobbySize - 1;
-  }
-});
-
-// ── Handle join-room to capture myIdx from lobby-update ──
-// Server sends idx via room-joined event – re-read from there
-// Server doesn't currently send playerIdx on room-joined, so we detect via lobby order
-// The cleanest fix: emit player-info after joining
-socket.on('room-joined', ({ roomId, sessionId }) => {
-  // Request our player index
-  socket.emit('get-my-idx');
-});
-socket.on('my-idx', ({ idx }) => {
-  myIdx = idx;
-});
-
-// Key handler
+// ── KEYBOARD ─────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('screen-enter').classList.contains('active')) {
-    const code = document.getElementById('inp-room').value.trim();
-    if (code) joinRoom(); else createRoom();
+  if (e.key === 'Enter') {
+    const activeId = document.querySelector('.screen.active')?.id;
+    if (activeId === 'screen-enter') {
+      const code = document.getElementById('inp-room').value.trim();
+      if (code) joinRoom(); else createRoom();
+    }
   }
 });
